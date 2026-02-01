@@ -1,0 +1,39 @@
+# Node modules (Tailwind / JS dependencies)
+node_modules/
+
+# Composer (PHP dependencies)
+vendor/
+
+# Environment file (contains secrets)
+.env
+
+# Log files and cache
+*.log
+*.cache
+*.tmp
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / editor configs
+.vscode/
+*.code-workspace
+
+# Tailwind output CSS (optional, can be generated)
+public/assets/css/output.css
+
+# NPM lock / Yarn lock if not needed
+package-lock.json
+yarn.lock
+
+# Optional: Composer lock if not needed
+composer.lock
+
+# Uploads / temporary files
+uploads/
+tmp/
+
+# Keep .htaccess versioned
+# (do NOT ignore)
