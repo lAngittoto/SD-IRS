@@ -7,7 +7,7 @@ if ($page === '') {
     exit;
 }
 
-$authPages = ['home-page'];
+$authPages = ['home-page', 'log-in'];
 
 $admin = [''];
 $guidance = [''];
@@ -21,6 +21,9 @@ if (in_array($page, $authPages)) {
         case 'home-page':
             include __DIR__ . '/../auth/views/home-page.php';
             break;
+        case 'log-in':
+            include __DIR__. '/../auth/views/log-in.php';
+            break;
     }
 } elseif (in_array($page, $admin)) {
 
@@ -31,5 +34,5 @@ if (in_array($page, $authPages)) {
 } else {
 
     http_response_code(404);
-    echo '<h1>404 - Page Not Found</h1>';
+    echo '404 Page not found.';
 }
