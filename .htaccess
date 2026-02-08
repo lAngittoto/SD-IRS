@@ -2,7 +2,7 @@
     RewriteEngine On
 
     # Block private folders
-    RewriteRule ^(app|auth|config|routes|src)(/.*)?$ - [F,L]
+    RewriteRule ^(app|config|routes|src)(/.*)?$ - [F,L]
 
     # Rewrite clean URLs for public routes
     RewriteCond %{REQUEST_FILENAME} !-f

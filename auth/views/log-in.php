@@ -14,22 +14,28 @@ ob_start();
         <form class="space-y-5" method="post" action="index.php?page=authenticate">
             <div>
                 <label class="block text-sm font-medium mb-1">Username</label>
-                <input type="text" name="username" placeholder="Enter your username"
+                <input type="text" name="username" placeholder="Enter your username" required
                     class="w-full px-4 py-2 rounded-xl border border-[#0B3C5D]/40 focus:outline-none focus:ring-2 focus:ring-[#0B3C5D] focus:border-[#0B3C5D]">
             </div>
 
-            <div>
-                <label class="block text-sm font-medium mb-1">Password</label>
-                <input type="password" name="password" placeholder="Enter your password"
-                    class="w-full px-4 py-2 rounded-xl border border-[#0B3C5D]/40 focus:outline-none focus:ring-2 focus:ring-[#0B3C5D] focus:border-[#0B3C5D]">
-            </div>
+      <div class="relative">
+    <label class="block text-sm font-medium mb-1">Password</label>
+    
+    <input id="password" type="password" name="password" placeholder="Enter your password" required
+        class="w-full px-4 py-2 pr-10 rounded-xl border border-[#0B3C5D]/40 focus:outline-none focus:ring-2 focus:ring-[#0B3C5D] focus:border-[#0B3C5D]">
+
+    <!-- Eye icon positioned inside input -->
+    <span class="absolute inset-y-0 right-3 top-6 flex items-center cursor-pointer text-[#0B3C5D]" id="togglePassword">
+        <i class="fa-solid fa-eye" id="eyeIcon"></i>
+    </span>
+</div>
 
             <div class="flex justify-end">
                 <a href="#" class="text-sm hover:underline">Forgot your password?</a>
             </div>
 
             <button type="submit"
-                class="w-full py-3 rounded-xl bg-[#f8c922] text-[#0B3C5D] font-semibold text-lg hover:bg-yellow-400 hover:scale-[1.02] transition-all duration-300 shadow-md">
+                class="w-full py-3 rounded-xl bg-[#f8c922] text-[#0B3C5D] font-semibold text-lg hover:bg-yellow-400 hover:scale-[1.02] transition-all duration-300 shadow-md cursor-pointer">
                 Sign In
             </button>
         </form>
@@ -37,9 +43,8 @@ ob_start();
         <p class="mt-6 text-center text-sm">
             Don’t have an account? <span class="font-medium">Contact an administrator.</span>
         </p>
-
         <?php if (!empty($_SESSION['error'])): ?>
-            <p style="color:#8b2d2d; font-size:14px; margin-bottom:15px;">
+            <p class="text-center text-red-700 text-sm mt-4">
                 <?= $_SESSION['error']; ?>
             </p>
             <?php unset($_SESSION['error']); ?>
@@ -47,9 +52,10 @@ ob_start();
 
     </section>
 </main>
+<script src="/student-discipline-and-incident-reporting-system/public/assets/js/eye-icon.js"></script>
 
 <?php
 $content = ob_get_clean();
 include __DIR__ . '/../../includes/structure.php';
-
 ?>
+
