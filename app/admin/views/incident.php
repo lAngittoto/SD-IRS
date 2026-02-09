@@ -2,20 +2,28 @@
 ob_start();
 ?>
 
-<main class="ml-64 min-h-screen bg-gray-100 p-6 max-w-full overflow-x-hidden">
+<main class="ml-64 min-h-screen bg-gray-100 p-8 w-[calc(100%-16rem)] overflow-x-hidden">
 
     <?php include __DIR__.'/../../../includes/admin-sidebar.php'; ?>
     <?php include __DIR__.'/../../../includes/admin-header.php'; ?>
 
-    <section class="mb-6 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+    <section class="mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-[#0B3C5D]">Incident Records</h1>
-            <p class="text-sm text-gray-600">Manage and review reported incidents</p>
+            <h1 class="text-2xl font-bold text-[#043915] flex items-center gap-3">
+                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <i class="fa-solid fa-clipboard-list text-green-600 text-lg"></i>
+                </div>
+                Incident Records
+            </h1>
+            <p class="text-sm text-gray-600 mt-1 ml-13">Manage and review reported incidents</p>
         </div>
 
-        <div class="w-full md:w-64">
+        <div class="w-full md:w-80 relative">
+            <div class="absolute left-0 top-0 bottom-0 w-12 bg-white rounded-l-xl flex items-center justify-center border-y border-l border-gray-300">
+                <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+            </div>
             <input type="text" id="searchInput" placeholder="Search incidents..." 
-                class="w-full px-4 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0B3C5D] text-sm shadow-sm">
+                class="w-full pl-14 pr-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#043915] text-sm shadow-sm bg-white">
         </div>
     </section>
 
@@ -23,43 +31,54 @@ ob_start();
 
         <aside class="w-72 bg-white rounded-2xl p-6 shadow-lg h-fit border border-gray-50">
             <div class="flex items-center justify-between mb-5">
-                <h2 class="text-lg font-semibold text-[#0B3C5D]">Filters</h2>
+                <h2 class="text-lg font-semibold text-[#043915]">Filters</h2>
                 <button type="button" onclick="resetFilters()" class="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider transition-all">
                     Reset Filters
                 </button>
             </div>
             
             <div class="space-y-4">
-                <!-- Reported By Dropdown -->
                 <div>
-                    <label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-widest">Reported By</label>
-                    <select id="filterRole" class="filter-select w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0B3C5D] text-sm bg-gray-50">
-                        <option value="">All Roles</option>
-                        <option value="Student">Student</option>
-                        <option value="Faculty">Faculty</option>
-                        <option value="Other">Other</option>
-                        <option value="Unknown">Unknown</option>
-                    </select>
+                    <label class="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Reported By</label>
+                    <div class="relative">
+                        <div class="absolute left-0 top-0 bottom-0 w-10 bg-blue-100 rounded-l-lg flex items-center justify-center border-y border-l border-gray-200">
+                            <i class="fa-solid fa-user-tie text-blue-600 text-xs"></i>
+                        </div>
+                        <select id="filterRole" class="filter-select w-full pl-12 pr-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#043915] text-sm bg-gray-50">
+                            <option value="">All Roles</option>
+                            <option value="Student">Student</option>
+                            <option value="Faculty">Faculty</option>
+                            <option value="Other">Other</option>
+                            <option value="Unknown">Unknown</option>
+                        </select>
+                    </div>
                 </div>
 
-                <!-- Incident Status Dropdown -->
                 <div>
-                    <label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-widest">Incident Status</label>
-                    <select id="filterStatus" class="filter-select w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0B3C5D] text-sm bg-gray-50">
-                        <option value="">All Statuses</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Under Review">Under Review</option>
-                        <option value="Resolved">Resolved</option>
-                    </select>
+                    <label class="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Incident Status</label>
+                    <div class="relative">
+                        <div class="absolute left-0 top-0 bottom-0 w-10 bg-orange-100 rounded-l-lg flex items-center justify-center border-y border-l border-gray-200">
+                            <i class="fa-solid fa-circle-info text-orange-600 text-xs"></i>
+                        </div>
+                        <select id="filterStatus" class="filter-select w-full pl-12 pr-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#043915] text-sm bg-gray-50">
+                            <option value="">All Statuses</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Under Review">Under Review</option>
+                            <option value="Resolved">Resolved</option>
+                        </select>
+                    </div>
                 </div>
 
-                <!-- Violation Type Dropdown (Empty / Dynamic) -->
                 <div>
-                    <label class="block text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-widest">Violation Type</label>
-                    <select id="filterViolation" class="filter-select w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0B3C5D] text-sm bg-gray-50">
-                        <option value="">All Violations</option>
-                        <!-- Options will come dynamically from the database -->
-                    </select>
+                    <label class="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Violation Type</label>
+                    <div class="relative">
+                        <div class="absolute left-0 top-0 bottom-0 w-10 bg-purple-100 rounded-l-lg flex items-center justify-center border-y border-l border-gray-200">
+                            <i class="fa-solid fa-triangle-exclamation text-purple-600 text-xs"></i>
+                        </div>
+                        <select id="filterViolation" class="filter-select w-full pl-12 pr-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#043915] text-sm bg-gray-50">
+                            <option value="">All Violations</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </aside>
@@ -69,9 +88,17 @@ ob_start();
             <div class="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100" style="min-height:60vh;">
                 <table class="w-full border-collapse text-left">
                     <thead>
-                        <tr class="bg-[#0B3C5D]">
-                            <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">Reported Individual</th>
-                            <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">Violation</th>
+                        <tr class="bg-[#043915]">
+                            <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">
+                                <div class="flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-user text-[10px] opacity-70"></i> Reported Individual
+                                </div>
+                            </th>
+                            <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">
+                                <div class="flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-file-lines text-[10px] opacity-70"></i> Violation
+                                </div>
+                            </th>
                             <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">Status</th>
                             <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">Actions</th>
                             <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">Date Reported</th>
@@ -80,9 +107,6 @@ ob_start();
 
                     <tbody class="divide-y divide-gray-100">
                         <?php
-                        // Fetch incidents dynamically from your database
-                        // Example: $incidents = fetchIncidentsFromDB();
-
                         if (!empty($incidents)) {
                             foreach($incidents as $incident):
                                 $statusColor = '';
@@ -101,7 +125,7 @@ ob_start();
                                 </span>
                             </td>
                             <td class="px-4 py-4 text-center relative">
-                                <button class="action-btn text-gray-400 hover:text-[#0B3C5D] transition-colors p-1">
+                                <button class="action-btn text-gray-400 hover:text-[#043915] transition-colors p-1">
                                     <i class="fa-solid fa-ellipsis-vertical text-lg"></i>
                                 </button>
                                 
@@ -130,12 +154,13 @@ ob_start();
                             </td>
                             <td class="px-4 py-4 text-center text-xs text-gray-500 font-mono"><?php echo $incident['date']; ?></td>
                         </tr>
-                        <?php 
-                            endforeach; 
-                        } else {
-                            echo '<tr><td colspan="5" class="text-center text-gray-400 py-4 text-sm">No incidents found.</td></tr>';
-                        }
-                        ?>
+                        <?php endforeach; } else { ?>
+                            <tr>
+                                <td colspan="5" class="text-center text-gray-400 py-4 text-sm">
+                                    No incidents found.
+                                </td>
+                            </tr>
+                        <?php } ?>
                     </tbody>
                 </table>
             </div>
@@ -146,7 +171,7 @@ ob_start();
                     <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 shadow-sm">
                         <i class="fa-solid fa-chevron-left text-xs"></i>
                     </button>
-                    <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-[#0B3C5D] text-white font-bold shadow-md">1</button>
+                    <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-[#043915] text-white font-bold shadow-md">1</button>
                     <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 font-semibold">2</button>
                     <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 font-semibold">3</button>
                     <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 font-semibold">4</button>
@@ -161,32 +186,7 @@ ob_start();
     </div>
 </main>
 
-<script>
-function resetFilters() {
-    document.querySelectorAll('.filter-select').forEach(select => select.selectedIndex = 0);
-    document.getElementById('searchInput').value = '';
-    console.log("All filters have been reset.");
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    const actionButtons = document.querySelectorAll(".action-btn");
-
-    actionButtons.forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const menu = btn.nextElementSibling;
-            document.querySelectorAll(".action-menu").forEach(m => {
-                if (m !== menu) m.classList.add("hidden");
-            });
-            menu.classList.toggle("hidden");
-        });
-    });
-
-    document.addEventListener("click", () => {
-        document.querySelectorAll(".action-menu").forEach(menu => menu.classList.add("hidden"));
-    });
-});
-</script>
+<script src="/student-discipline-and-incident-reporting-system/public/assets/js/actions.js"></script>
 
 <?php
 $content = ob_get_clean();
