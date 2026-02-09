@@ -1,8 +1,7 @@
 <?php
 require __DIR__.'/../../config/database.php';
 require __DIR__.'/../models/authenticate-model.php';
-header('Location: /student-discipline-and-incident-reporting-system/public');
-exit;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';

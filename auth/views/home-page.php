@@ -30,7 +30,7 @@ ob_start();
             class="mt-6 px-10 py-3 rounded-2xl bg-[#f8c922] backdrop-blur-md border border-white/30 
             text-[#0B3C5D] font-semibold text-lg shadow-lg
             hover:scale-110 hover:shadow-xl transition-all duration-300">
-            Login
+            Sign In to Your Account
         </a>
     </div>
 

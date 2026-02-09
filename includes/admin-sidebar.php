@@ -8,7 +8,7 @@
     <!-- MENU -->
     <nav class="flex-1 px-4 flex flex-col gap-2 text-white">
 
-        <a href="#"
+        <a href="admin-dashboard"
            class="flex items-center gap-3 px-4 py-3 rounded-xl
                   hover:bg-white/10 hover:backdrop-blur-md
                   hover:shadow-lg transition-all duration-300">
@@ -16,7 +16,7 @@
             Dashboard
         </a>
 
-        <a href="#"
+        <a href="incident-reports"
            class="flex items-center gap-3 px-4 py-3 rounded-xl
                   hover:bg-white/10 hover:backdrop-blur-md
                   hover:shadow-lg transition-all duration-300">

@@ -9,7 +9,7 @@ if ($page === '') {
 
 $authPages = ['home-page', 'log-in', 'authenticate'];
 
-$admin = ['admin-dashboard'];
+$admin = ['admin-dashboard' ,'incident-reports'];
 $guidance = [''];
 $teacher = [''];
 $student = [''];
