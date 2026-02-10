@@ -14,6 +14,12 @@ switch ($page) {
     case 'advisories':
         include __DIR__.'/../app/admin/controllers/advisories-controller.php';
         break;
+    case 'user-management':
+        include __DIR__.'/../app/admin/controllers/users-controller.php';
+        break;
+    case 'reports':
+        include __DIR__.'/../app/admin/controllers/reports-controller.php';
+        break;
     default:
     http_response_code(404);
     echo "404 Page not found.";

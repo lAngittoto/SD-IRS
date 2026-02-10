@@ -7,8 +7,8 @@
 
     <!-- RIGHT: Notification -->
     <button>
-        <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-green-100">
-            <i class="fa-solid fa-bell text-[#043915] text-xl"></i>
+        <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-white-100">
+            <i class="fa-solid fa-bell text-[#f8c922] text-xl"></i>
         </div>
     </button>
 

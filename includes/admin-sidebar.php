@@ -1,7 +1,7 @@
 <aside class="fixed left-0 top-0 h-screen w-64 bg-[#043915] flex flex-col shadow-xl">
 
     <!-- TOP SPACE / LOGO AREA -->
-    <div class="h-20 flex items-center justify-center text-white font-semibold text-lg tracking-wide">
+    <div class="h-20 flex items-center justify-center text-[#f8c922] font-semibold text-lg tracking-wide">
         <i class="fa-solid fa-user"></i>
     </div>
 
@@ -40,7 +40,7 @@
             Advisories
         </a>
 
-        <a href="#"
+        <a href="user-management"
            class="flex items-center gap-3 px-4 py-3 rounded-xl
                   hover:bg-white/10 hover:backdrop-blur-md
                   hover:shadow-lg transition-all duration-300">
@@ -48,7 +48,7 @@
             User Management
         </a>
 
-        <a href="#"
+        <a href="reports"
            class="flex items-center gap-3 px-4 py-3 rounded-xl
                   hover:bg-white/10 hover:backdrop-blur-md
                   hover:shadow-lg transition-all duration-300">
