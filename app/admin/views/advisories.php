@@ -32,7 +32,9 @@ ob_start();
         <aside class="w-full xl:w-72 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-lg font-bold text-[#043915]">Filters</h2>
-                <button class="text-[10px] font-bold text-red-500 uppercase tracking-tighter hover:underline">Reset Filters</button>
+                <button type="button" onclick="resetFilters()" class="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider transition-all">
+                    Reset Filters
+                </button>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-6">

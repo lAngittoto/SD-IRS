@@ -87,7 +87,7 @@ ob_start();
                 <div class="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-100 shrink-0">
                     <i class="fa-solid fa-chart-line text-blue-700 text-lg sm:text-xl"></i>
                 </div>
-                <h1 class="text-base sm:text-lg font-semibold text-[#0B3C5D]">Monthly Incident Trends</h1>
+                <h1 class="text-base sm:text-lg font-semibold text-[#043915]">Monthly Incident Trends</h1>
             </div>
             <div class="h-48 sm:h-60 bg-gray-50 rounded-xl border border-dashed border-gray-200 flex items-center justify-center">
                 <span class="text-gray-400 text-sm sm:text-base">Chart Placeholder</span>
@@ -99,7 +99,7 @@ ob_start();
                 <div class="w-10 h-10 flex items-center justify-center rounded-lg bg-purple-100 shrink-0">
                     <i class="fa-solid fa-list-check text-purple-700 text-lg sm:text-xl"></i>
                 </div>
-                <h1 class="text-base sm:text-lg font-semibold text-[#0B3C5D]">Policy Violations</h1>
+                <h1 class="text-base sm:text-lg font-semibold text-[#043915]">Policy Violations</h1>
             </div>
             <div class="h-48 sm:h-60 bg-gray-50 rounded-xl border border-dashed border-gray-200 flex items-center justify-center">
                 <span class="text-gray-400 text-sm sm:text-base">Data Breakdown Placeholder</span>

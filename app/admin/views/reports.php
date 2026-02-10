@@ -4,15 +4,15 @@ ob_start();
 $currentYear = date('Y'); 
 ?>
 
-<main class="ml-64 min-h-screen bg-gray-50 p-8 w-[calc(100%-16rem)] transition-all duration-300 ease-in-out">
+<main class="transition-all duration-300 xl:ml-64 min-h-screen bg-[#f8fafc] p-4 md:p-8 w-full xl:w-[calc(100%-16rem)] overflow-x-hidden">
 
     <?php include __DIR__ . '/../../../includes/admin-sidebar.php'; ?>
     <?php include __DIR__ . '/../../../includes/admin-header.php'; ?>
 
-    <section class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-            <h1 class="text-2xl font-bold text-[#043915] flex items-center gap-3">
-                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center shadow-sm">
+    <section class="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div class="text-center lg:text-left">
+            <h1 class="text-2xl font-bold text-[#043915] flex items-center justify-center lg:justify-start gap-3">
+                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center shadow-sm shrink-0">
                     <i class="fa-solid fa-chart-pie text-[#043915] text-lg"></i>
                 </div>
                 Reports & Analytics Summary
@@ -22,15 +22,15 @@ $currentYear = date('Y');
             </p>
         </div>
 
-        <div class="relative w-full md:w-96">
+        <div class="relative w-full lg:w-96">
             <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-            <input type="text" placeholder="Search specific report or record..." 
-                   class="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#043915] shadow-sm transition-all duration-200">
+            <input type="text" placeholder="Search specific report..." 
+                   class="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#043915] shadow-sm">
         </div>
     </section>
 
     <section class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-8 flex flex-wrap items-center gap-4">
-        <div class="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-200">
+        <div class="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
             <i class="fa-solid fa-calendar-week text-[#043915]"></i>
             <select class="bg-transparent text-sm font-bold text-gray-700 focus:outline-none cursor-pointer">
                 <option>Select Period</option>
@@ -46,7 +46,7 @@ $currentYear = date('Y');
             </select>
         </div>
 
-        <div class="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-200">
+        <div class="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
             <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Year</span>
             <select class="bg-transparent text-sm font-bold text-gray-700 focus:outline-none cursor-pointer">
                 <?php for($y=2026; $y<=2030; $y++) echo "<option value='$y'>$y</option>"; ?>
@@ -58,7 +58,7 @@ $currentYear = date('Y');
         </button>
     </section>
 
-    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <?php 
         $cards = [
             ['icon'=>'fa-user-graduate','title'=>'Total Enrolled','value'=>$totalStudents ?? 0,'color'=>'green','tag'=>'ACTIVE YEAR'],
@@ -66,19 +66,26 @@ $currentYear = date('Y');
             ['icon'=>'fa-triangle-exclamation','title'=>'Total Incidents','value'=>$totalIncidents ?? 0,'color'=>'red','tag'=>'NEEDS ATTENTION'],
             ['icon'=>'fa-clock','title'=>'Pending Case','value'=>$pendingReports ?? 0,'color'=>'orange','tag'=>'For Review']
         ];
-        foreach($cards as $card): ?>
+        foreach($cards as $card): 
+            $tagColors = [
+                'green' => 'text-green-600 bg-green-50',
+                'blue' => 'text-blue-600 bg-blue-50',
+                'red' => 'text-red-600 bg-red-50',
+                'orange' => 'text-orange-600 bg-orange-50'
+            ];
+        ?>
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden hover:translate-y-[-4px] transition-all duration-300">
             <div class="absolute right-[-10px] top-[-10px] opacity-5 text-[#043915]"><i class="fa-solid <?=$card['icon']?> text-7xl"></i></div>
             <h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"><?=$card['title']?></h2>
             <p class="text-3xl font-bold text-gray-800"><?=number_format($card['value']);?></p>
-            <div class="mt-4 flex items-center text-[9px] font-black text-<?=$card['color']?>-600 bg-<?=$card['color']?>-50 w-fit px-2 py-1 rounded-md"><?=$card['tag']?></div>
+            <div class="mt-4 flex items-center text-[9px] font-black <?=$tagColors[$card['color']]?> w-fit px-2 py-1 rounded-md"><?=$card['tag']?></div>
         </div>
         <?php endforeach; ?>
     </section>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         
-        <div class="lg:col-span-2 space-y-8">
+        <div class="lg:col-span-2 space-y-8 w-full">
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center">
@@ -97,18 +104,18 @@ $currentYear = date('Y');
                     <h3 class="font-bold text-[#043915]">Recent Resolutions</h3>
                     <span class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-md uppercase">Total: 0</span>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead class="bg-gray-50/50">
-                            <tr>
-                                <th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase">Violation</th>
-                                <th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase">Severity</th>
-                                <th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase text-center">Date</th>
+                <div class="overflow-x-auto w-full">
+                    <table class="w-full border-separate border-spacing-0 text-left">
+                        <thead>
+                            <tr class="bg-[#043915]">
+                                <th class="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest rounded-tl-2xl border-none">Violation</th>
+                                <th class="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest border-none text-center">Severity</th>
+                                <th class="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest rounded-tr-2xl border-none text-center">Date Resolved</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="divide-y divide-gray-50">
                             <tr>
-                                <td colspan="3" class="px-6 py-16 text-center text-xs text-gray-400 italic uppercase tracking-widest font-medium">
+                                <td colspan="3" class="px-6 py-20 text-center text-xs text-gray-400 italic uppercase tracking-widest font-medium">
                                     No recent resolutions recorded.
                                 </td>
                             </tr>
@@ -118,7 +125,7 @@ $currentYear = date('Y');
             </div>
         </div>
 
-        <div class="lg:col-span-1 space-y-8">
+        <div class="lg:col-span-1 space-y-8 w-full">
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
@@ -162,7 +169,7 @@ $currentYear = date('Y');
                             ['title' => 'Incidents', 'desc' => 'High-priority cases flagged for review.']
                         ];
                         foreach($insights as $insight): ?>
-                        <div class="border-l-4 border-yellow-500 pl-3">
+                        <div class="border-l-4 border-[#f8c922] pl-3">
                             <h5 class="text-[10px] font-black text-green-900 uppercase"><?=$insight['title']?></h5>
                             <p class="text-[11px] text-gray-600 leading-tight mt-1"><?=$insight['desc']?></p>
                         </div>
@@ -186,7 +193,7 @@ $currentYear = date('Y');
 
 <style>
 @media print {
-    .ml-64, aside, header, button, select, input, .ml-auto { display: none !important; }
+    .xl\:ml-64, .ml-64, aside, header, button, select, input, .ml-auto { display: none !important; }
     main { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
     .shadow-lg, .shadow-sm { box-shadow: none !important; border: 1px solid #eee !important; }
 }

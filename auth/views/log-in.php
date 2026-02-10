@@ -2,53 +2,73 @@
 ob_start();
 ?>
 
-<main class="min-h-screen relative flex items-center justify-center bg-[#ffffff] px-4">
+<main class="min-h-screen relative flex items-center justify-center bg-[#f8fafc] px-4">
 
-    <a href="home-page" class="absolute top-6 left-10 text-[#043915] text-2xl hover:scale-110 transition">
-        <i class="fa-solid fa-arrow-left"></i>
+    <a href="home-page" class="absolute top-6 left-10 text-[#043915] text-2xl hover:scale-110 transition-all duration-300">
+        <i class="fa-solid fa-circle-arrow-left"></i>
     </a>
 
-    <section class="w-full max-w-md bg-[#ffffff] rounded-2xl shadow-2xl p-6 md:p-8 text-[#043915]">
+    <section class="w-full max-w-md bg-[#ffffff] rounded-3xl shadow-2xl p-8 border border-gray-100">
+        
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-shield-halved text-[#043915] text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-[#043915]">Welcome Back!</h2>
+            <p class="text-sm text-gray-500 mt-2">Enter your credentials to access your account.</p>
+        </div>
 
-        <p class="text-center mb-6">Enter your credentials to access your account.</p>
-
-        <form class="space-y-5" method="post" action="index.php?page=authenticate">
+        <form class="space-y-6" method="post" action="index.php?page=authenticate">
             <div>
-                <label class="block text-sm font-medium mb-1">Username</label>
-                <input type="text" name="username" placeholder="Enter your username" required
-                    class="w-full px-4 py-2 rounded-xl border border-[#043915]/40 focus:outline-none focus:ring-2 focus:ring-[#043915] focus:border-[#043915]">
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Username / ID Number</label>
+                <div class="relative group">
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#043915] transition-colors">
+                        <i class="fa-solid fa-user-circle text-lg"></i>
+                    </div>
+                    <input type="text" name="username" placeholder="Enter your username" required
+                        class="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#043915] focus:border-transparent transition-all duration-200">
+                </div>
             </div>
 
-            <div class="relative">
-                <label class="block text-sm font-medium mb-1">Password</label>
-
-                <input id="password" type="password" name="password" placeholder="Enter your password" required
-                    class="w-full px-4 py-2 pr-10 rounded-xl border border-[#043915]/40 focus:outline-none focus:ring-2 focus:ring-[#043915] focus:border-[#043915]">
-
-                <!-- Eye icon positioned inside input -->
-                <span class="absolute inset-y-0 right-3 top-6 flex items-center cursor-pointer text-[#043915]" id="togglePassword">
-                    <i class="fa-solid fa-eye" id="eyeIcon"></i>
-                </span>
+            <div>
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Password</label>
+                <div class="relative group">
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#043915] transition-colors">
+                        <i class="fa-solid fa-lock text-lg"></i>
+                    </div>
+                    <input id="password" type="password" name="password" placeholder="••••••••" required
+                        class="w-full pl-12 pr-12 py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#043915] focus:border-transparent transition-all duration-200">
+                    
+                    <button type="button" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#043915] transition-colors" id="togglePassword">
+                        <i class="fa-solid fa-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="flex justify-end">
-                <a href="#" class="text-sm hover:underline">Forgot your password?</a>
+                <a href="#" class="text-xs font-bold text-[#043915] hover:underline underline-offset-4 uppercase tracking-tighter">Forgot your password?</a>
             </div>
 
             <button type="submit"
-                class="w-full py-3 rounded-xl bg-[#f8c922] text-[#043915] font-semibold text-lg hover:bg-yellow-400 hover:scale-[1.02] transition-all duration-300 shadow-md cursor-pointer">
-                Sign In
+                class="w-full py-4 rounded-xl bg-[#f8c922] text-[#043915] font-black text-xs uppercase tracking-widest hover:bg-yellow-400 hover:shadow-lg hover:shadow-yellow-200 active:scale-[0.98] transition-all duration-300 cursor-pointer">
+                Sign In to System
             </button>
         </form>
 
-        <p class="mt-6 text-center text-sm">
-            Don’t have an account? <span class="font-medium">Contact an administrator.</span>
-        </p>
+        <div class="mt-8 pt-6 border-t border-gray-50 text-center">
+            <p class="text-xs text-gray-500">
+                Don’t have an account? <br>
+                <span class="font-bold text-[#043915] uppercase tracking-tighter">Contact your System Administrator</span>
+            </p>
+        </div>
 
         <?php if (!empty($_SESSION['error'])): ?>
-            <p class="text-center text-red-700 text-sm mt-4">
-                <?= $_SESSION['error']; ?>
-            </p>
+            <div class="mt-4 p-3 rounded-lg bg-red-50 border border-red-100 flex items-center gap-3">
+                <i class="fa-solid fa-circle-exclamation text-red-500"></i>
+                <p class="text-red-700 text-[11px] font-bold uppercase tracking-tight">
+                    <?= $_SESSION['error']; ?>
+                </p>
+            </div>
             <?php unset($_SESSION['error']); ?>
         <?php endif; ?>
 
@@ -57,10 +77,7 @@ ob_start();
 
 <script src="/student-discipline-and-incident-reporting-system/public/assets/js/eye-icon.js"></script>
 
-
-
 <?php
 $content = ob_get_clean();
 include __DIR__ . '/../../includes/structure.php';
 ?>
-
