@@ -2,23 +2,23 @@
 ob_start();
 ?>
 
-<main class="ml-64 min-h-screen bg-gray-100 p-8 w-[calc(100%-16rem)] overflow-x-hidden">
+<main class="transition-all duration-300 xl:ml-64 min-h-screen bg-gray-100 p-4 md:p-8 w-full xl:w-[calc(100%-16rem)] overflow-x-hidden">
 
     <?php include __DIR__.'/../../../includes/admin-sidebar.php'; ?>
     <?php include __DIR__.'/../../../includes/admin-header.php'; ?>
 
-    <section class="mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-[#043915] flex items-center gap-3">
-                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+    <section class="mb-8 flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+        <div class="text-center lg:text-left">
+            <h1 class="text-xl sm:text-2xl font-bold text-[#043915] flex items-center justify-center lg:justify-start gap-3">
+                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
                     <i class="fa-solid fa-clipboard-list text-green-600 text-lg"></i>
                 </div>
                 Incident Records
             </h1>
-            <p class="text-sm text-gray-600 mt-1 ml-13">Manage and review reported incidents</p>
+            <p class="text-sm text-gray-600 mt-1 lg:ml-13">Manage and review reported incidents</p>
         </div>
 
-        <div class="w-full md:w-80 relative">
+        <div class="w-full lg:w-80 relative">
             <div class="absolute left-0 top-0 bottom-0 w-12 bg-white rounded-l-xl flex items-center justify-center border-y border-l border-gray-300">
                 <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
             </div>
@@ -27,9 +27,9 @@ ob_start();
         </div>
     </section>
 
-    <div class="flex gap-6">
+    <div class="flex flex-col xl:flex-row gap-6">
 
-        <aside class="w-72 bg-white rounded-2xl p-6 shadow-lg h-fit border border-gray-50">
+        <aside class="w-full xl:w-72 bg-white rounded-2xl p-6 shadow-lg h-fit border border-gray-50">
             <div class="flex items-center justify-between mb-5">
                 <h2 class="text-lg font-semibold text-[#043915]">Filters</h2>
                 <button type="button" onclick="resetFilters()" class="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider transition-all">
@@ -37,7 +37,7 @@ ob_start();
                 </button>
             </div>
             
-            <div class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 gap-4">
                 <div>
                     <label class="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Reported By</label>
                     <div class="relative">
@@ -83,22 +83,13 @@ ob_start();
             </div>
         </aside>
 
-        <section class="flex-1 flex flex-col gap-4">
-
-            <div class="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100" style="min-height:60vh;">
-                <table class="w-full border-collapse text-left">
+        <section class="flex-1 flex flex-col gap-4 min-w-0">
+            <div class="bg-white rounded-2xl shadow-md overflow-x-auto border border-gray-100" style="min-height:60vh;">
+                <table class="w-full border-collapse text-left min-w-[700px]">
                     <thead>
                         <tr class="bg-[#043915]">
-                            <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">
-                                <div class="flex items-center justify-center gap-2">
-                                    <i class="fa-solid fa-user text-[10px] opacity-70"></i> Reported Individual
-                                </div>
-                            </th>
-                            <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">
-                                <div class="flex items-center justify-center gap-2">
-                                    <i class="fa-solid fa-file-lines text-[10px] opacity-70"></i> Violation
-                                </div>
-                            </th>
+                            <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">Reported Individual</th>
+                            <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">Violation</th>
                             <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">Status</th>
                             <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">Actions</th>
                             <th class="px-4 py-4 text-center text-white text-[11px] font-bold uppercase tracking-wider">Date Reported</th>
@@ -134,18 +125,7 @@ ob_start();
                                         <button class="flex items-center gap-3 w-full text-left px-4 py-2 hover:bg-gray-50 text-xs text-gray-700">
                                             <i class="fa-regular fa-eye text-gray-400"></i> View Details
                                         </button>
-                                        <button class="flex items-center gap-3 w-full text-left px-4 py-2 hover:bg-gray-50 text-xs text-gray-700">
-                                            <i class="fa-regular fa-comment-dots text-gray-400"></i> Send Message
-                                        </button>
                                         <div class="h-[1px] bg-gray-100 my-1"></div>
-                                        <p class="px-4 py-1 text-[9px] text-gray-400 font-bold uppercase tracking-widest">Update Status</p>
-                                        
-                                        <button class="flex items-center gap-3 w-full text-left px-4 py-2 hover:bg-yellow-50 text-xs text-yellow-600">
-                                            <i class="fa-solid fa-clock-rotate-left"></i> Pending
-                                        </button>
-                                        <button class="flex items-center gap-3 w-full text-left px-4 py-2 hover:bg-orange-50 text-xs text-orange-600">
-                                            <i class="fa-solid fa-magnifying-glass"></i> Under Review
-                                        </button>
                                         <button class="flex items-center gap-3 w-full text-left px-4 py-2 hover:bg-green-50 text-xs text-green-600 font-bold">
                                             <i class="fa-solid fa-circle-check"></i> Resolved
                                         </button>
@@ -156,16 +136,14 @@ ob_start();
                         </tr>
                         <?php endforeach; } else { ?>
                             <tr>
-                                <td colspan="5" class="text-center text-gray-400 py-4 text-sm">
-                                    No incidents found.
-                                </td>
+                                <td colspan="5" class="text-center text-gray-400 py-10 text-sm">No incidents found.</td>
                             </tr>
                         <?php } ?>
                     </tbody>
                 </table>
             </div>
 
-            <div class="flex justify-between items-center mt-2 px-2">
+            <div class="flex flex-col sm:flex-row justify-between items-center mt-2 gap-4 px-2">
                 <p class="text-[11px] text-gray-400 uppercase font-bold tracking-widest">Showing Results</p>
                 <div class="flex items-center gap-2">
                     <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 shadow-sm">
@@ -181,7 +159,6 @@ ob_start();
                     </button>
                 </div>
             </div>
-
         </section>
     </div>
 </main>

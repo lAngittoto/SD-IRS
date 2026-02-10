@@ -147,13 +147,14 @@ ob_start();
             </div>
 
             <!-- PAGINATION SAME DESIGN AS INCIDENT -->
+      
             <div class="flex justify-between items-center mt-2 px-2">
                 <p class="text-[11px] text-gray-400 uppercase font-bold tracking-widest">Showing Results</p>
                 <div class="flex items-center gap-2">
                     <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 shadow-sm">
                         <i class="fa-solid fa-chevron-left text-xs"></i>
                     </button>
-                    <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-[#043915] text-white font-bold shadow-md">1</button>
+                    <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-[#f8c922] text-[#043915] font-bold shadow-md">1</button>
                     <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 font-semibold">2</button>
                     <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 font-semibold">3</button>
                     <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 font-semibold">4</button>

@@ -148,8 +148,8 @@ $currentYear = date('Y');
             </div>
 
             <div class="bg-white rounded-2xl shadow-lg border border-green-100 overflow-hidden">
-                <div class="bg-[#043915] p-5">
-                    <h3 class="text-white text-sm font-bold flex items-center gap-2">
+                <div class="bg-[#f8c922] p-5">
+                    <h3 class="text-[#043915] text-sm font-bold flex items-center gap-2">
                         <i class="fa-solid fa-wand-magic-sparkles"></i> AI Generated Analysis
                     </h3>
                 </div>
@@ -162,7 +162,7 @@ $currentYear = date('Y');
                             ['title' => 'Incidents', 'desc' => 'High-priority cases flagged for review.']
                         ];
                         foreach($insights as $insight): ?>
-                        <div class="border-l-4 border-green-500 pl-3">
+                        <div class="border-l-4 border-yellow-500 pl-3">
                             <h5 class="text-[10px] font-black text-green-900 uppercase"><?=$insight['title']?></h5>
                             <p class="text-[11px] text-gray-600 leading-tight mt-1"><?=$insight['desc']?></p>
                         </div>
@@ -170,7 +170,7 @@ $currentYear = date('Y');
                     </div>
 
                     <div class="flex flex-col gap-2 pt-2">
-                        <button class="w-full py-3 bg-[#043915] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-green-800 transition shadow-md flex items-center justify-center gap-2">
+                        <button class="w-full py-3 bg-[#f8c922] text-[#043915] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-yellow-300 transition shadow-md flex items-center justify-center gap-2">
                             <i class="fa-solid fa-rotate"></i> Re-generate
                         </button>
                         <button onclick="window.print()" class="w-full py-3 bg-gray-50 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 transition flex items-center justify-center gap-2">
