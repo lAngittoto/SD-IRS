@@ -109,13 +109,13 @@ ob_start();
             <div class="md:col-span-2 flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-gray-100">
                 <button type="reset"
                     class="order-2 sm:order-1 px-8 py-3.5 rounded-xl text-sm font-semibold text-gray-600
-                           bg-gray-100 hover:bg-gray-200 transition w-full sm:w-auto text-center">
+                           bg-gray-100 hover:bg-gray-200 transition w-full sm:w-auto text-center cursor-pointer">
                     Cancel
                 </button>
 
                 <button type="submit"
                     class="order-1 sm:order-2 px-8 py-3.5 rounded-xl text-sm font-bold text-[#043915]
-                           bg-[#f8c922] hover:bg-yellow-300 transition shadow-md flex items-center justify-center gap-2 w-full sm:w-auto">
+                           bg-[#f8c922] hover:bg-yellow-300 transition shadow-md flex items-center justify-center gap-2 w-full sm:w-auto cursor-pointer">
                     <i class="fa-solid fa-floppy-disk"></i>
                     Save Configuration
                 </button>

@@ -177,10 +177,10 @@ $currentYear = date('Y');
                     </div>
 
                     <div class="flex flex-col gap-2 pt-2">
-                        <button class="w-full py-3 bg-[#f8c922] text-[#043915] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-yellow-300 transition shadow-md flex items-center justify-center gap-2">
+                        <button class="w-full py-3 bg-[#f8c922] text-[#043915] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-yellow-300 transition shadow-md flex items-center justify-center gap-2 cursor-pointer">
                             <i class="fa-solid fa-rotate"></i> Re-generate
                         </button>
-                        <button onclick="window.print()" class="w-full py-3 bg-gray-50 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 transition flex items-center justify-center gap-2">
+                        <button onclick="window.print()" class="w-full py-3 bg-gray-50 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 transition flex items-center justify-center gap-2 cursor-pointer">
                             <i class="fa-solid fa-print"></i> Print Report
                         </button>
                     </div>

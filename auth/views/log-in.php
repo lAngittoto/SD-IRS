@@ -20,7 +20,7 @@ ob_start();
 
         <form class="space-y-6" method="post" action="index.php?page=authenticate">
             <div>
-                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Username / ID Number</label>
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Username</label>
                 <div class="relative group">
                     <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#043915] transition-colors">
                         <i class="fa-solid fa-user-circle text-lg"></i>
@@ -40,7 +40,7 @@ ob_start();
                         class="w-full pl-12 pr-12 py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#043915] focus:border-transparent transition-all duration-200">
                     
                     <button type="button" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#043915] transition-colors" id="togglePassword">
-                        <i class="fa-solid fa-eye" id="eyeIcon"></i>
+                        <i class="fa-solid fa-eye cursor-pointer" id="eyeIcon"></i>
                     </button>
                 </div>
             </div>

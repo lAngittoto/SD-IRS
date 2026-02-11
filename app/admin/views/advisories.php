@@ -86,7 +86,7 @@ ob_start();
             </div>
 
             <div class="mt-8 pt-8 border-t border-gray-100">
-                <button class="w-full flex items-center justify-center gap-2 bg-[#f8c922] text-[#043915] px-4 py-3 rounded-xl text-xs font-bold hover:bg-yellow-300 transition shadow-md">
+                <button class="w-full flex items-center justify-center gap-2 bg-[#f8c922] text-[#043915] px-4 py-3 rounded-xl text-xs font-bold hover:bg-yellow-300 transition shadow-md cursor-pointer">
                     <i class="fa-solid fa-user-plus"></i> Assign Student
                 </button>
             </div>
