@@ -1,30 +1,22 @@
 <?php
 // Include controller
 require_once __DIR__ . '/../controllers/users-controller.php';
+require_once __DIR__. '/../../../helpers/user-logic.php';
 
-// Initialize controller with PDO (assuming $pdo is available from routing)
-$userController = new UserController($pdo);
+$page = isset($_GET['p']) ? (int)$_GET['p'] : 1;
+$roleFilter = isset($_GET['role']) ? $_GET['role'] : '';
+$sortFilter = isset($_GET['sort']) ? $_GET['sort'] : 'latest'; 
+$searchFilter = isset($_GET['search']) ? $_GET['search'] : ''; // <--- DAPAT MERON NITO PARA HINDI UNDEFINED
 
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $userController->createUser();
-}
-
-// Get all users
 $limit = 7;
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$page = max($page, 1);
-
-$totalUsers = $userController->getTotalUsers();
-$totalPages = ceil($totalUsers / $limit);
-
-if ($page > $totalPages && $totalPages > 0) {
-    $page = $totalPages;
-}
-
 $offset = ($page - 1) * $limit;
 
-$users = $userController->getUsersPaginated($limit, $offset);
+// 2. Ipasa ang searchFilter sa Total Count para tama ang pagination (Dapat 2 arguments)
+$totalUsers = $userController->getTotalUsers($roleFilter, $searchFilter);
+$totalPages = ceil($totalUsers / $limit);
+
+// 3. Ipasa ang lahat ng 5 arguments (Dito nag-eerror ang Line 17 mo dati)
+$users = $userController->getUsersPaginated($limit, $offset, $roleFilter, $sortFilter, $searchFilter);
 
 ob_start();
 ?>
@@ -33,33 +25,7 @@ ob_start();
 
     <?php include __DIR__ . '/../../../includes/admin-sidebar.php'; ?>
     <?php include __DIR__ . '/../../../includes/admin-header.php'; ?>
-
-    <!-- SUCCESS/ERROR MESSAGES -->
-    <?php if (isset($_SESSION['success_message'])): ?>
-        <div id="successAlert" class="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-lg flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <i class="fa-solid fa-circle-check text-green-500 text-xl"></i>
-                <p class="text-green-700 font-medium"><?php echo htmlspecialchars($_SESSION['success_message']); ?></p>
-            </div>
-            <button onclick="this.parentElement.remove()" class="text-green-500 hover:text-green-700">
-                <i class="fa-solid fa-times"></i>
-            </button>
-        </div>
-        <?php unset($_SESSION['success_message']); ?>
-    <?php endif; ?>
-
-    <?php if (isset($_SESSION['error_message'])): ?>
-        <div id="errorAlert" class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <i class="fa-solid fa-circle-exclamation text-red-500 text-xl"></i>
-                <p class="text-red-700 font-medium"><?php echo htmlspecialchars($_SESSION['error_message']); ?></p>
-            </div>
-            <button onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700">
-                <i class="fa-solid fa-times"></i>
-            </button>
-        </div>
-        <?php unset($_SESSION['error_message']); ?>
-    <?php endif; ?>
+    <?php require_once __DIR__.'/../../../helpers/user-validation.php';?>
 
     <!-- PAGE HEADER + SEARCH -->
     <section class="mb-8 flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6">
@@ -79,8 +45,8 @@ ob_start();
             <div class="absolute left-0 top-0 bottom-0 w-12 bg-white rounded-l-xl flex items-center justify-center border-y border-l border-gray-300">
                 <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
             </div>
-            <input type="text" placeholder="Search users..."
-                class="w-full pl-14 pr-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#043915] text-sm shadow-sm bg-white">
+           <input type="text" id="userSearchBar" oninput="loadUsers(1)" placeholder="Search users by name, lrn..."
+    class="w-full pl-14 pr-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#043915] text-sm shadow-sm bg-white">
         </div>
     </section>
 
@@ -96,9 +62,11 @@ ob_start();
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div class="flex items-center justify-between mb-5">
                     <h2 class="text-lg font-semibold text-[#043915]">Filters</h2>
-                    <button type="button" onclick="resetFilters()" class="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider transition-all">
-                        Reset Filters
-                    </button>
+<button type="button" 
+        onclick="resetFilters()" 
+        class="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider transition-all cursor-pointer">
+    Reset Filters
+</button>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-6">
@@ -108,11 +76,11 @@ ob_start();
                             <div class="absolute left-0 top-0 bottom-0 w-10 bg-blue-50 rounded-l-lg flex items-center justify-center border-y border-l border-gray-100">
                                 <i class="fa-solid fa-user-tag text-blue-500 text-xs"></i>
                             </div>
-                            <select class="w-full pl-12 pr-3 py-2.5 rounded-lg border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#043915] text-sm bg-gray-50" id="userRole" name="role">
-                                <option value="">All Roles</option>
-                                <option value="Student">Student</option>
-                                <option value="Teacher">Teacher</option>
-                            </select>
+      <select id="userRoleFilter" onchange="loadUsers(1)" class="w-full pl-12 pr-3 py-2.5 rounded-lg border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#043915] text-sm bg-gray-50">
+    <option value="">All Roles</option>
+    <option value="Student">Student</option>
+    <option value="Teacher">Teacher</option>
+</select>
                         </div>
                     </div>
 
@@ -122,10 +90,11 @@ ob_start();
                             <div class="absolute left-0 top-0 bottom-0 w-10 bg-purple-50 rounded-l-lg flex items-center justify-center border-y border-l border-gray-100">
                                 <i class="fa-solid fa-arrow-up-wide-short text-purple-500 text-xs"></i>
                             </div>
-                            <select class="w-full pl-12 pr-3 py-2.5 rounded-lg border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#043915] text-sm bg-gray-50">
-                                <option value="asc">A → Z</option>
-                                <option value="desc">Z → A</option>
-                            </select>
+                           <select id="userSortFilter" onchange="loadUsers(1)" class="w-full pl-12 pr-3 py-2.5 rounded-lg border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#043915] text-sm bg-gray-50">
+  <option value="latest">Default</option>
+                           <option value="asc">A → Z</option>
+    <option value="desc">Z → A</option>
+</select>
                         </div>
                     </div>
                 </div>
@@ -133,7 +102,7 @@ ob_start();
         </aside>
 
         <!-- MAIN TABLE -->
-        <section class="flex-1 w-full overflow-hidden">
+        <section id="userTableSection" class="flex-1 w-full overflow-hidden">
             <div class="bg-white rounded-2xl shadow-sm border border-green-100 flex flex-col min-h-[60vh] overflow-hidden">
                 <div class="overflow-x-auto w-full">
                     <table class="w-full border-collapse">
@@ -148,7 +117,7 @@ ob_start();
                         <tbody class="bg-white">
                             <?php if (!empty($users)): ?>
                                 <?php foreach ($users as $user):
-                                    // Initials Generator (e.g., Allan Aranda -> AA)
+                                  
                                     $nameParts = explode(' ', trim($user['name']));
                                     $initials = strtoupper(substr($nameParts[0], 0, 1) . (count($nameParts) > 1 ? substr(end($nameParts), 0, 1) : ''));
 
@@ -197,19 +166,12 @@ ob_start();
 
             <!-- PAGINATION + RESULTS INFO -->
             <div class="flex flex-col sm:flex-row justify-between items-center mt-6 px-2 gap-4">
-                <p class="text-[11px] text-gray-400 uppercase font-bold tracking-widest">Showing  Results</p>
-                <div class="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0">
-                    <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all shadow-sm">
-                        <i class="fa-solid fa-chevron-left text-xs"></i>
-                    </button>
-
-                 <?php include __DIR__ . '/../../../helpers/user-pignation.php'; ?>
-
-
-        
-                    </button>
+                <p class="text-[11px] text-gray-400 uppercase font-bold tracking-widest">Showing Results</p>
+                <div id="paginationWrapper" class="flex items-center justify-center">
+                    <?php include __DIR__ . '/../../../helpers/user-pignation.php'; ?>
                 </div>
             </div>
+
         </section>
     </div>
 </main>
@@ -290,6 +252,7 @@ ob_start();
         </div>
     </div>
 </div>
+
 
 <script src="/student-discipline-and-incident-reporting-system/public/assets/js/user-helper.js"></script>
 
