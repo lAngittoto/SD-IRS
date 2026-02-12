@@ -34,36 +34,30 @@ class AdvisoriesController {
             
             // Validation
             if (empty($data['teacher_id']) || $data['teacher_id'] <= 0) {
-                $_SESSION['error_message'] = 'Please select a valid teacher.';
-                header('Location: ' . $_SERVER['HTTP_REFERER']);
+                echo json_encode(['success' => false, 'message' => 'Please select a valid teacher.']);
                 exit;
             }
             
             if (empty($data['role_type']) || !in_array($data['role_type'], ['subject', 'advisory'])) {
-                $_SESSION['error_message'] = 'Please select a valid role type.';
-                header('Location: ' . $_SERVER['HTTP_REFERER']);
+                echo json_encode(['success' => false, 'message' => 'Please select a valid role type.']);
                 exit;
             }
             
             // Additional validation for advisory teachers
             if ($data['role_type'] === 'advisory') {
                 if (empty($data['advisory_name'])) {
-                    $_SESSION['error_message'] = 'Advisory class name is required.';
-                    header('Location: ' . $_SERVER['HTTP_REFERER']);
+                    echo json_encode(['success' => false, 'message' => 'Advisory class name is required.']);
                     exit;
                 }
                 
                 if (empty($data['grade_level']) || !in_array($data['grade_level'], ['7', '8', '9', '10'])) {
-                    $_SESSION['error_message'] = 'Please select a valid grade level.';
-                    header('Location: ' . $_SERVER['HTTP_REFERER']);
+                    echo json_encode(['success' => false, 'message' => 'Please select a valid grade level.']);
                     exit;
                 }
             }
             
             $result = $this->advisoriesModel->assignAdvisoryTeacher($data);
-            $_SESSION[$result['success'] ? 'success_message' : 'error_message'] = $result['message'];
-            
-            header('Location: ' . $_SERVER['HTTP_REFERER']);
+            echo json_encode($result);
             exit;
         }
     }
@@ -76,15 +70,12 @@ class AdvisoriesController {
             $advisory_id = intval($_POST['advisory_id'] ?? 0);
             
             if ($advisory_id <= 0) {
-                $_SESSION['error_message'] = 'Invalid advisory ID.';
-                header('Location: ' . $_SERVER['HTTP_REFERER']);
+                echo json_encode(['success' => false, 'message' => 'Invalid advisory ID.']);
                 exit;
             }
             
             $result = $this->advisoriesModel->convertToSubjectTeacher($advisory_id);
-            $_SESSION[$result['success'] ? 'success_message' : 'error_message'] = $result['message'];
-            
-            header('Location: ' . $_SERVER['HTTP_REFERER']);
+            echo json_encode($result);
             exit;
         }
     }
@@ -104,21 +95,17 @@ class AdvisoriesController {
             
             // Validation
             if ($advisory_id <= 0) {
-                $_SESSION['error_message'] = 'Please select an advisory teacher.';
-                header('Location: ' . $_SERVER['HTTP_REFERER']);
+                echo json_encode(['success' => false, 'message' => 'Please select an advisory teacher.']);
                 exit;
             }
             
             if (empty($student_ids) || !is_array($student_ids)) {
-                $_SESSION['error_message'] = 'Please select at least one student.';
-                header('Location: ' . $_SERVER['HTTP_REFERER']);
+                echo json_encode(['success' => false, 'message' => 'Please select at least one student.']);
                 exit;
             }
             
             $result = $this->advisoriesModel->assignStudentsToAdvisory($advisory_id, $student_ids, $grade_levels);
-            $_SESSION[$result['success'] ? 'success_message' : 'error_message'] = $result['message'];
-            
-            header('Location: ' . $_SERVER['HTTP_REFERER']);
+            echo json_encode($result);
             exit;
         }
     }
@@ -133,21 +120,17 @@ class AdvisoriesController {
             $grade_level = intval($_POST['grade_level'] ?? 0);
             
             if ($assignment_id <= 0 || $new_advisory_id <= 0) {
-                $_SESSION['error_message'] = 'Invalid data provided.';
-                header('Location: ' . $_SERVER['HTTP_REFERER']);
+                echo json_encode(['success' => false, 'message' => 'Invalid data provided.']);
                 exit;
             }
             
             if ($grade_level < 7 || $grade_level > 10) {
-                $_SESSION['error_message'] = 'Invalid grade level.';
-                header('Location: ' . $_SERVER['HTTP_REFERER']);
+                echo json_encode(['success' => false, 'message' => 'Invalid grade level.']);
                 exit;
             }
             
             $result = $this->advisoriesModel->reassignStudent($assignment_id, $new_advisory_id, $grade_level);
-            $_SESSION[$result['success'] ? 'success_message' : 'error_message'] = $result['message'];
-            
-            header('Location: ' . $_SERVER['HTTP_REFERER']);
+            echo json_encode($result);
             exit;
         }
     }
@@ -160,15 +143,12 @@ class AdvisoriesController {
             $assignment_id = intval($_POST['assignment_id'] ?? 0);
             
             if ($assignment_id <= 0) {
-                $_SESSION['error_message'] = 'Invalid assignment ID.';
-                header('Location: ' . $_SERVER['HTTP_REFERER']);
+                echo json_encode(['success' => false, 'message' => 'Invalid assignment ID.']);
                 exit;
             }
             
             $result = $this->advisoriesModel->removeFromAdvisory($assignment_id);
-            $_SESSION[$result['success'] ? 'success_message' : 'error_message'] = $result['message'];
-            
-            header('Location: ' . $_SERVER['HTTP_REFERER']);
+            echo json_encode($result);
             exit;
         }
     }
@@ -182,15 +162,12 @@ class AdvisoriesController {
             $grade_level = intval($_POST['grade_level'] ?? 0);
             
             if ($assignment_id <= 0 || $grade_level < 7 || $grade_level > 10) {
-                $_SESSION['error_message'] = 'Invalid data provided.';
-                header('Location: ' . $_SERVER['HTTP_REFERER']);
+                echo json_encode(['success' => false, 'message' => 'Invalid data provided.']);
                 exit;
             }
             
             $result = $this->advisoriesModel->updateStudentGrade($assignment_id, $grade_level);
-            $_SESSION[$result['success'] ? 'success_message' : 'error_message'] = $result['message'];
-            
-            header('Location: ' . $_SERVER['HTTP_REFERER']);
+            echo json_encode($result);
             exit;
         }
     }
@@ -231,6 +208,7 @@ class AdvisoriesController {
         
         return $this->advisoriesModel->getAssignedStudents($teacher_role, $grade_level, $date_filter, $search);
     }
+    
     
     /**
      * Get unassigned students
@@ -279,13 +257,25 @@ class AdvisoriesController {
                 break;
                 
             case 'get_unassigned_students':
-                $students = $this->getUnassignedStudents();
+                $advisory_id = $_POST['advisory_id'] ?? 0;
+                $students = $this->advisoriesModel->getUnassignedStudents($advisory_id);
                 echo json_encode(['success' => true, 'data' => $students]);
                 break;
                 
             case 'get_advisory_teachers':
                 $teachers = $this->getAdvisoryTeachers();
                 echo json_encode(['success' => true, 'data' => $teachers]);
+                break;
+                
+            case 'get_advisory_list':
+                $advisories = $this->advisoriesModel->getAdvisoryList();
+                echo json_encode(['success' => true, 'data' => $advisories]);
+                break;
+                
+            case 'get_advisory_students':
+                $advisory_id = $_POST['advisory_id'] ?? 0;
+                $students = $this->getStudentsByAdvisory($advisory_id);
+                echo json_encode(['success' => true, 'data' => $students]);
                 break;
                 
             default:
@@ -331,6 +321,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'get_filtered_data':
         case 'get_unassigned_students':
         case 'get_advisory_teachers':
+        case 'get_advisory_list':
+        case 'get_advisory_students':
             $advisoriesController->handleAjaxRequest();
             break;
     }

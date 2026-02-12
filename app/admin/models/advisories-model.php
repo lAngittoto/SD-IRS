@@ -128,6 +128,21 @@ class AdvisoriesModel {
         try {
             $this->conn->beginTransaction();
             
+            // Check current student count
+            $countQuery = "SELECT COUNT(*) as current_count FROM {$this->assignment_table} 
+                          WHERE advisory_id = :advisory_id";
+            $countStmt = $this->conn->prepare($countQuery);
+            $countStmt->execute([':advisory_id' => $advisory_id]);
+            $currentCount = $countStmt->fetch(PDO::FETCH_ASSOC)['current_count'];
+            
+            // Check if adding these students would exceed 40
+            $newTotal = $currentCount + count($student_ids);
+            if ($newTotal > 40) {
+                $this->conn->rollBack();
+                $remaining = 40 - $currentCount;
+                return ['success' => false, 'message' => "Cannot assign " . count($student_ids) . " students. Only $remaining slots available (Maximum: 40 students per advisory)."];
+            }
+            
             $successCount = 0;
             $skippedCount = 0;
             
@@ -181,6 +196,17 @@ class AdvisoriesModel {
      */
     public function reassignStudent($assignment_id, $new_advisory_id, $grade_level) {
         try {
+            // Check if new advisory has space
+            $countQuery = "SELECT COUNT(*) as current_count FROM {$this->assignment_table} 
+                          WHERE advisory_id = :advisory_id";
+            $countStmt = $this->conn->prepare($countQuery);
+            $countStmt->execute([':advisory_id' => $new_advisory_id]);
+            $currentCount = $countStmt->fetch(PDO::FETCH_ASSOC)['current_count'];
+            
+            if ($currentCount >= 40) {
+                return ['success' => false, 'message' => 'Cannot reassign. The selected advisory class is full (40/40 students).'];
+            }
+            
             $query = "UPDATE {$this->assignment_table} 
                      SET advisory_id = :new_advisory_id, 
                          grade_level = :grade_level,
@@ -250,10 +276,12 @@ class AdvisoriesModel {
      */
     public function getAllTeachers() {
         try {
-            $query = "SELECT user_id, name, email 
-                     FROM {$this->users_table} 
-                     WHERE role = 'Teacher' 
-                     ORDER BY name ASC";
+            // Get teachers who don't have an advisory assignment yet
+            $query = "SELECT u.user_id, u.name, u.email 
+                     FROM {$this->users_table} u
+                     LEFT JOIN {$this->advisory_table} a ON u.user_id = a.teacher_id
+                     WHERE u.role = 'Teacher' AND a.advisory_id IS NULL
+                     ORDER BY u.name ASC";
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute();
@@ -298,7 +326,7 @@ class AdvisoriesModel {
     }
     
     /**
-     * Get all students (for assignment modal) - only unassigned students
+     * Get all students (for assignment modal) - only unassigned students for specific advisory
      */
     public function getAllStudents() {
         try {
@@ -308,6 +336,27 @@ class AdvisoriesModel {
                         u.name, 
                         u.lrn,
                         '7' as grade_level
+                     FROM {$this->users_table} u
+                     LEFT JOIN {$this->assignment_table} aa ON u.user_id = aa.student_id
+                     WHERE u.role = 'Student' AND aa.assignment_id IS NULL
+                     ORDER BY u.name ASC";
+            
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+    
+    /**
+     * Get unassigned students for a specific advisory (excluding already assigned)
+     */
+    public function getUnassignedStudents($advisory_id = 0) {
+        try {
+            $query = "SELECT u.user_id, u.name, u.lrn, '7' as grade_level
                      FROM {$this->users_table} u
                      LEFT JOIN {$this->assignment_table} aa ON u.user_id = aa.student_id
                      WHERE u.role = 'Student' AND aa.assignment_id IS NULL
@@ -386,15 +435,21 @@ class AdvisoriesModel {
     }
     
     /**
-     * Get unassigned students
+     * Get advisory list for filter view
      */
-    public function getUnassignedStudents() {
+    public function getAdvisoryList() {
         try {
-            $query = "SELECT u.user_id, u.name, u.lrn 
-                     FROM {$this->users_table} u
-                     LEFT JOIN {$this->assignment_table} aa ON u.user_id = aa.student_id
-                     WHERE u.role = 'Student' AND aa.assignment_id IS NULL
-                     ORDER BY u.name ASC";
+            $query = "SELECT 
+                        a.advisory_id,
+                        a.advisory_name,
+                        a.grade_level,
+                        u.name as teacher_name,
+                        COUNT(aa.assignment_id) as student_count
+                     FROM {$this->advisory_table} a
+                     INNER JOIN {$this->users_table} u ON a.teacher_id = u.user_id
+                     LEFT JOIN {$this->assignment_table} aa ON a.advisory_id = aa.advisory_id
+                     GROUP BY a.advisory_id, a.advisory_name, a.grade_level, u.name
+                     ORDER BY a.advisory_name ASC";
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute();
@@ -417,12 +472,16 @@ class AdvisoriesModel {
                         u.name as teacher_name,
                         u.email as teacher_email,
                         a.advisory_name,
+                        a.grade_level,
                         tr.role_type,
-                        a.created_at as assigned_date
+                        a.created_at as assigned_date,
+                        COUNT(aa.assignment_id) as student_count
                      FROM {$this->advisory_table} a
                      INNER JOIN {$this->users_table} u ON a.teacher_id = u.user_id
                      LEFT JOIN {$this->teacher_roles_table} tr ON a.teacher_id = tr.teacher_id
-                     WHERE a.advisory_id = :advisory_id";
+                     LEFT JOIN {$this->assignment_table} aa ON a.advisory_id = aa.advisory_id
+                     WHERE a.advisory_id = :advisory_id
+                     GROUP BY a.advisory_id, a.teacher_id, u.name, u.email, a.advisory_name, a.grade_level, tr.role_type, a.created_at";
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute([':advisory_id' => $advisory_id]);

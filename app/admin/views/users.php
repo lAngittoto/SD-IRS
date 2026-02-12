@@ -3,20 +3,7 @@
 require_once __DIR__ . '/../controllers/users-controller.php';
 require_once __DIR__. '/../../../helpers/user-logic.php';
 
-$page = isset($_GET['p']) ? (int)$_GET['p'] : 1;
-$roleFilter = isset($_GET['role']) ? $_GET['role'] : '';
-$sortFilter = isset($_GET['sort']) ? $_GET['sort'] : 'latest'; 
-$searchFilter = isset($_GET['search']) ? $_GET['search'] : ''; // <--- DAPAT MERON NITO PARA HINDI UNDEFINED
 
-$limit = 7;
-$offset = ($page - 1) * $limit;
-
-// 2. Ipasa ang searchFilter sa Total Count para tama ang pagination (Dapat 2 arguments)
-$totalUsers = $userController->getTotalUsers($roleFilter, $searchFilter);
-$totalPages = ceil($totalUsers / $limit);
-
-// 3. Ipasa ang lahat ng 5 arguments (Dito nag-eerror ang Line 17 mo dati)
-$users = $userController->getUsersPaginated($limit, $offset, $roleFilter, $sortFilter, $searchFilter);
 
 ob_start();
 ?>

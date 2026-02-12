@@ -5,29 +5,16 @@ ob_start();
 $teachers = $advisoriesController->getAllTeachers();
 $advisoryTeachers = $advisoriesController->getAdvisoryTeachers();
 $allStudents = $advisoriesController->getAllStudents();
+
 ?>
+
+<!-- Toast Notification Container -->
+<div id="toastContainer" class="fixed top-4 right-4 z-[200] space-y-3"></div>
 
 <main class="transition-all duration-300 xl:ml-64 min-h-screen bg-[#f8fafc] p-4 md:p-8 w-full xl:w-[calc(100%-16rem)] overflow-x-hidden">
 
     <?php include __DIR__ . '/../../../includes/admin-sidebar.php'; ?>
     <?php include __DIR__ . '/../../../includes/admin-header.php'; ?>
-
-    <!-- Success/Error Messages -->
-    <?php if (isset($_SESSION['success_message'])): ?>
-        <div class="mb-6 bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-xl flex items-center gap-3">
-            <i class="fa-solid fa-circle-check text-green-500"></i>
-            <span class="font-medium"><?= htmlspecialchars($_SESSION['success_message']) ?></span>
-        </div>
-        <?php unset($_SESSION['success_message']); ?>
-    <?php endif; ?>
-
-    <?php if (isset($_SESSION['error_message'])): ?>
-        <div class="mb-6 bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-xl flex items-center gap-3">
-            <i class="fa-solid fa-circle-exclamation text-red-500"></i>
-            <span class="font-medium"><?= htmlspecialchars($_SESSION['error_message']) ?></span>
-        </div>
-        <?php unset($_SESSION['error_message']); ?>
-    <?php endif; ?>
 
     <section class="mb-8 flex flex-col lg:flex-row lg:justify-between lg:items-end gap-6">
         <div class="text-center lg:text-left">
@@ -153,9 +140,11 @@ $allStudents = $advisoriesController->getAllStudents();
             </div>
 
             <div class="flex flex-col sm:flex-row justify-between items-center mt-6 px-2 gap-4">
-                <p class="text-[11px] text-gray-400 uppercase font-bold tracking-widest" id="resultCount">Showing 0 Results</p>
+                <p class="text-[11px] text-gray-400 uppercase font-bold tracking-widest">Showing  Results</p>
             </div>
+            
         </section>
+        
     </div>
 </main>
 
@@ -170,11 +159,11 @@ $allStudents = $advisoriesController->getAllStudents();
             <div class="flex items-center gap-3">
                 <div class="w-full md:w-64">
                     <label class="text-[10px] font-bold text-gray-400 uppercase block mb-1">Select Advisory Teacher</label>
-                    <select id="modalAdvisoryTeacher" class="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-[#043915] bg-white">
+                    <select id="modalAdvisoryTeacher" class="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-[#043915] bg-white" onchange="updateStudentList()">
                         <option value="">Choose Teacher...</option>
                         <?php foreach ($advisoryTeachers as $teacher): ?>
-                            <option value="<?= $teacher['advisory_id'] ?>">
-                                <?= htmlspecialchars($teacher['teacher_name']) ?> - <?= htmlspecialchars($teacher['advisory_name']) ?> (Grade <?= $teacher['grade_level'] ?>)
+                            <option value="<?= $teacher['advisory_id'] ?>" data-current-count="<?= $teacher['student_count'] ?? 0 ?>">
+                                <?= htmlspecialchars($teacher['teacher_name']) ?> - <?= htmlspecialchars($teacher['advisory_name']) ?> (<?= $teacher['student_count'] ?? 0 ?>/40)
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -185,8 +174,27 @@ $allStudents = $advisoriesController->getAllStudents();
             </div>
         </div>
 
+        <!-- Advisory Capacity Info -->
+        <div id="advisoryCapacityInfo" class="hidden px-8 pt-4">
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                <i class="fa-solid fa-info-circle text-blue-500 text-xl"></i>
+                <div class="flex-1">
+                    <p class="text-sm font-bold text-blue-900">Advisory Capacity</p>
+                    <p class="text-xs text-blue-700 mt-1">
+                        <span id="currentStudentCount">0</span> students assigned. 
+                        You can assign up to <span id="remainingSlots">40</span> more students (Maximum: 40)
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <div class="p-8 overflow-hidden flex flex-col flex-1">
-            <?php if (!empty($allStudents)): ?>
+            <div id="loadingStudents" class="hidden py-12 text-center">
+                <i class="fa-solid fa-spinner fa-spin text-4xl text-[#043915] mb-3"></i>
+                <p class="text-sm text-gray-600">Loading students...</p>
+            </div>
+
+            <div id="studentListContainer" class="hidden flex flex-col h-full">
                 <div class="flex flex-wrap items-center gap-3 mb-6 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                     <span class="text-[10px] font-bold text-gray-400 uppercase mr-2">Quick Select:</span>
                     <button type="button" onclick="toggleAllStudents(true)" class="px-4 py-2 bg-[#043915] text-white rounded-lg text-[10px] font-bold uppercase transition hover:bg-opacity-90">All Students</button>
@@ -196,60 +204,34 @@ $allStudents = $advisoriesController->getAllStudents();
                     <button type="button" onclick="selectByGrade('10')" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-[10px] font-bold uppercase hover:bg-green-200 transition">Grade 10</button>
                     <button type="button" onclick="toggleAllStudents(false)" class="px-4 py-2 border border-red-200 text-red-500 rounded-lg text-[10px] font-bold uppercase hover:bg-red-50 transition ml-auto">Clear</button>
                 </div>
-            <?php endif; ?>
 
-            <div class="flex-1 overflow-y-auto rounded-xl border border-gray-100">
-                <form id="assignStudentsForm" method="POST">
-                    <input type="hidden" name="action" value="assign_students">
-                    <input type="hidden" name="advisory_id" id="hiddenAdvisoryId" value="">
+                <div class="flex-1 overflow-y-auto rounded-xl border border-gray-100" style="max-height: 400px;">
+                    <form id="assignStudentsForm" method="POST">
+                        <input type="hidden" name="action" value="assign_students">
+                        <input type="hidden" name="advisory_id" id="hiddenAdvisoryId" value="">
 
-                    <table class="w-full text-left border-collapse">
-                        <thead class="sticky top-0 bg-gray-50 z-10">
-                            <tr class="text-[10px] text-gray-400 uppercase font-bold">
-                                <th class="py-4 px-6 border-b">Select</th>
-                                <th class="py-4 px-6 border-b">Student Name</th>
-                                <th class="py-4 px-6 border-b">LRN</th>
-                                <th class="py-4 px-6 border-b">Grade Level</th>
-                                <th class="py-4 px-6 border-b text-center">Set Grade</th>
-                            </tr>
-                        </thead>
-                        <tbody id="modalStudentTable" class="divide-y divide-gray-50">
-                            <?php if (empty($allStudents)): ?>
-                                <tr>
-                                    <td colspan="5" class="py-12 text-center">
-                                        <div class="flex flex-col items-center justify-center text-gray-400">
-                                            <i class="fa-solid fa-user-check text-4xl mb-3 opacity-20"></i>
-                                            <p class="text-sm font-medium text-gray-600">No Unassigned Students Available</p>
-                                            <p class="text-xs text-gray-500 mt-1">All students are already assigned to advisory classes.</p>
-                                        </div>
-                                    </td>
+                        <table class="w-full text-left border-collapse">
+                            <thead class="sticky top-0 bg-gray-50 z-10">
+                                <tr class="text-[10px] text-gray-400 uppercase font-bold">
+                                    <th class="py-4 px-6 border-b">Select</th>
+                                    <th class="py-4 px-6 border-b">Student Name</th>
+                                    <th class="py-4 px-6 border-b">LRN</th>
+                                    <th class="py-4 px-6 border-b">Grade Level</th>
+                                    <th class="py-4 px-6 border-b text-center">Set Grade</th>
                                 </tr>
-                            <?php else: ?>
-                                <?php foreach ($allStudents as $student): ?>
-                                    <tr class="student-row hover:bg-gray-50 transition" data-grade="<?= $student['grade_level'] ?? '7' ?>" data-student-id="<?= $student['user_id'] ?>">
-                                        <td class="py-3 px-6">
-                                            <input type="checkbox" name="student_ids[]" value="<?= $student['user_id'] ?>" class="student-checkbox w-4 h-4 text-[#043915] border-gray-300 rounded focus:ring-[#043915]">
-                                        </td>
-                                        <td class="py-3 px-6">
-                                            <div class="text-sm font-medium text-gray-900"><?= htmlspecialchars($student['name']) ?></div>
-                                            <div class="text-xs text-gray-500">Grade <?= $student['grade_level'] ?? '7' ?></div>
-                                        </td>
-                                        <td class="py-3 px-6 text-sm text-gray-600"><?= htmlspecialchars($student['lrn']) ?></td>
-                                        <td class="py-3 px-6 text-sm grade-display">Grade <?= $student['grade_level'] ?? '7' ?></td>
-                                        <td class="py-3 px-6 text-center">
-                                            <select name="grade_levels[<?= $student['user_id'] ?>]" class="grade-select border border-gray-200 rounded-lg px-3 py-1 text-xs focus:ring-2 focus:ring-[#043915]" onchange="updateGradeDisplay(this)">
-                                                <option value="7" <?= ($student['grade_level'] ?? '7') == '7' ? 'selected' : '' ?>>Grade 7</option>
-                                                <option value="8" <?= ($student['grade_level'] ?? '7') == '8' ? 'selected' : '' ?>>Grade 8</option>
-                                                <option value="9" <?= ($student['grade_level'] ?? '7') == '9' ? 'selected' : '' ?>>Grade 9</option>
-                                                <option value="10" <?= ($student['grade_level'] ?? '7') == '10' ? 'selected' : '' ?>>Grade 10</option>
-                                            </select>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </form>
+                            </thead>
+                            <tbody id="modalStudentTable" class="divide-y divide-gray-50">
+                                <!-- Students will be loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </form>
+                </div>
+            </div>
+
+            <div id="selectAdvisoryMessage" class="py-12 text-center">
+                <i class="fa-solid fa-chalkboard-user text-4xl text-gray-300 mb-3"></i>
+                <p class="text-sm font-medium text-gray-600">Select an Advisory Teacher</p>
+                <p class="text-xs text-gray-500 mt-1">Choose an advisory teacher from the dropdown above to view available students</p>
             </div>
         </div>
 
@@ -269,7 +251,7 @@ $allStudents = $advisoriesController->getAllStudents();
         </button>
         <h2 class="text-xl font-bold text-[#043915] mb-6">Assign Teacher Role</h2>
 
-        <form id="assignTeacherForm" method="POST">
+        <form id="assignTeacherForm" onsubmit="submitTeacherAssignment(event)">
             <input type="hidden" name="action" value="assign_teacher">
 
             <div class="space-y-4">
@@ -328,7 +310,7 @@ $allStudents = $advisoriesController->getAllStudents();
         <h2 class="text-xl font-bold text-[#043915] mb-2">Reassign Student</h2>
         <p class="text-xs text-gray-500 mb-6">Change advisory assignment for <span id="reassignStudentName" class="font-bold text-[#043915]"></span></p>
 
-        <form id="reassignForm" method="POST">
+        <form id="reassignForm" onsubmit="submitReassignment(event)">
             <input type="hidden" name="action" value="reassign_student">
             <input type="hidden" name="assignment_id" id="reassignAssignmentId">
 
@@ -356,9 +338,9 @@ $allStudents = $advisoriesController->getAllStudents();
                 </div>
 
                 <button type="submit" class="w-full bg-[#f8c922] text-[#043915] py-4 rounded-xl font-bold text-sm shadow-lg mt-4 hover:bg-opacity-90 transition">Reassign Student</button>
+            </div>
         </form>
     </div>
-</div>
 </div>
 
 <!-- Remove from Advisory Modal -->
@@ -374,7 +356,7 @@ $allStudents = $advisoriesController->getAllStudents();
             <h2 class="text-xl font-bold text-[#043915] mb-2">Remove from Advisory</h2>
             <p class="text-sm text-gray-600 mb-6">Are you sure you want to remove <span id="removeStudentName" class="font-bold text-[#043915]"></span> from their advisory class?</p>
 
-            <form id="removeAdvisoryForm" method="POST">
+            <form id="removeAdvisoryForm" onsubmit="submitRemoval(event)">
                 <input type="hidden" name="action" value="remove_from_advisory">
                 <input type="hidden" name="assignment_id" id="removeAssignmentId">
 
@@ -400,7 +382,7 @@ $allStudents = $advisoriesController->getAllStudents();
             <h2 class="text-xl font-bold text-[#043915] mb-2">Convert to Subject Teacher</h2>
             <p class="text-sm text-gray-600 mb-6">Converting <span id="convertTeacherName" class="font-bold text-[#043915]"></span> to a Subject Teacher will remove all their advisory students. This action cannot be undone.</p>
 
-            <form id="convertTeacherForm" method="POST">
+            <form id="convertTeacherForm" onsubmit="submitConversion(event)">
                 <input type="hidden" name="action" value="convert_to_subject">
                 <input type="hidden" name="advisory_id" id="convertAdvisoryId">
 
@@ -409,6 +391,31 @@ $allStudents = $advisoriesController->getAllStudents();
                     <button type="submit" class="flex-1 px-6 py-3 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 transition">Convert</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Advisory Details Modal -->
+<div id="viewAdvisoryModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
+    <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-8 border-b border-gray-100 bg-gray-50/50 flex justify-between items-start">
+            <div>
+                <h2 class="text-2xl font-black text-[#043915]" id="advisoryDetailTitle">Advisory Details</h2>
+                <p class="text-xs text-gray-500 uppercase tracking-widest font-bold mt-1" id="advisoryDetailSubtitle"></p>
+            </div>
+            <button onclick="closeViewAdvisoryModal()" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+
+        <div class="p-8 overflow-y-auto flex-1">
+            <div id="advisoryStudentsList">
+                <!-- Student list will be loaded here -->
+            </div>
+        </div>
+
+        <div class="p-8 bg-gray-50 border-t border-gray-100">
+            <button type="button" onclick="closeViewAdvisoryModal()" class="w-full px-6 py-4 bg-[#043915] text-white rounded-2xl font-bold text-sm hover:bg-opacity-90 transition">Close</button>
         </div>
     </div>
 </div>
