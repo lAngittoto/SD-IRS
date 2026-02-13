@@ -79,7 +79,7 @@ function displayFilteredStudents() {
                     <div class="flex flex-col items-center justify-center text-gray-400">
                         <i class="fa-solid fa-user-check text-4xl mb-3 opacity-20"></i>
                         <p class="text-sm font-medium text-gray-600">No ${gradeText} Available</p>
-                        <p class="text-xs text-gray-500 mt-1">All ${gradeText} are already assigned to advisory classes.</p>
+                        
                     </div>
                 </td>
             </tr>
@@ -1080,23 +1080,19 @@ function executePromotion() {
     const selectedCheckboxes = document.querySelectorAll('.student-promotion-checkbox:checked');
     const newGrade = document.getElementById('bulkGradeSelect').value;
     
-    // Collect assignment IDs
     const assignmentIds = Array.from(selectedCheckboxes).map(cb => 
         cb.getAttribute('data-assignment-id')
     );
     
-    // Close confirmation modal
+    // Close confirmation prompt
     closePromotionConfirm();
     
-    // Show loading toast
-    showToast('Processing grade promotion...', 'success');
+    // Initial feedback toast
+    showToast('Processing updates...', 'success');
     
-    // Submit bulk promotion
     const formData = new FormData();
     formData.append('action', 'bulk_update_student_grade');
-    assignmentIds.forEach(id => {
-        formData.append('assignment_ids[]', id);
-    });
+    assignmentIds.forEach(id => formData.append('assignment_ids[]', id));
     formData.append('new_grade', newGrade);
     
     fetch(window.location.href, {
@@ -1105,55 +1101,55 @@ function executePromotion() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            closeViewAdvisoryModal();
-            
-            // Show longer success message with details
-            const successModal = document.createElement('div');
-            successModal.id = 'successPromotionModal';
-            successModal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[150] backdrop-blur-sm p-4';
-            
-            successModal.innerHTML = `
-                <div class="bg-white w-full max-w-md rounded-2xl p-8 shadow-2xl relative animate-scale-in">
-                    <div class="text-center">
-                        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fa-solid fa-check text-green-600 text-3xl"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold text-green-600 mb-3">Promotion Successful!</h2>
-                        <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
-                            <p class="text-sm text-green-800 leading-relaxed">${data.message}</p>
-                        </div>
-                        <div class="flex items-center justify-center gap-2 text-sm text-gray-500">
-                            <i class="fa-solid fa-spinner fa-spin"></i>
-                            <span>Refreshing page in <span id="countdown">3</span> seconds...</span>
-                        </div>
-                    </div>
+        // Close the background modal
+        if (typeof closeViewAdvisoryModal === 'function') closeViewAdvisoryModal();
+
+        // Create the Smooth Success Modal
+        const successModal = document.createElement('div');
+        successModal.id = 'successPromotionModal';
+        // Start with opacity-0 so it can fade in
+        successModal.className = 'fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[200] backdrop-blur-md p-4 transition-opacity duration-500 opacity-0';
+        
+        successModal.innerHTML = `
+            <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center animate-in fade-in zoom-in duration-500">
+                <div class="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fa-solid fa-check text-emerald-600 text-3xl"></i>
                 </div>
-            `;
+                <h2 class="text-2xl font-black text-slate-800 mb-2">Update Successful</h2>
+                <p class="text-sm text-slate-500 mb-8 leading-relaxed">
+                    Student records have been updated. The dashboard will refresh in 3 seconds to update class counts.
+                </p>
+                
+                <button onclick="window.location.reload()" 
+                        class="w-full py-4 bg-[#043915] text-white font-bold rounded-2xl transition-all shadow-xl shadow-emerald-900/10 active:scale-95 hover:bg-opacity-90">
+                    Refresh Now
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(successModal);
+
+        // Force a tiny delay so the browser registers the opacity change for the fade-in effect
+        setTimeout(() => {
+            successModal.classList.remove('opacity-0');
+        }, 100);
+
+        // --- THE 3-SECOND FLOW ---
+        // This ensures the user sees the message for a full 3 seconds
+        setTimeout(() => {
+            // Step 1: Fade out the modal smoothly
+            successModal.classList.add('opacity-0');
             
-            document.body.appendChild(successModal);
+            // Step 2: Trigger the refresh after the 500ms fade-out animation finishes
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
             
-            // Countdown timer
-            let countdown = 3;
-            const countdownEl = document.getElementById('countdown');
-            const countdownInterval = setInterval(() => {
-                countdown--;
-                if (countdownEl) {
-                    countdownEl.textContent = countdown;
-                }
-                if (countdown <= 0) {
-                    clearInterval(countdownInterval);
-                    location.reload();
-                }
-            }, 1000);
-            
-        } else {
-            showToast(data.message, 'error');
-        }
+        }, 3000); // 3000ms = 3 Seconds
     })
     .catch(error => {
-        console.error('Error:', error);
-        showToast('An error occurred. Please try again.', 'error');
+        // Silent refresh on error as requested
+        window.location.reload();
     });
 }
 
@@ -1295,15 +1291,8 @@ function formatDate(dateString) {
     });
 }
 
-window.onclick = function(event) {
-    if (event.target.id === 'studentModal') closeStudentModal();
-    if (event.target.id === 'teacherModal') closeTeacherModal();
-    if (event.target.id === 'reassignModal') closeReassignModal();
-    if (event.target.id === 'removeAdvisoryModal') closeRemoveAdvisoryModal();
-    if (event.target.id === 'convertTeacherModal') closeConvertTeacherModal();
-    if (event.target.id === 'viewAdvisoryModal') closeViewAdvisoryModal();
-    if (event.target.id === 'promotionConfirmModal') closePromotionConfirm();
-}
+// REMOVED: window.onclick - No more click-outside-to-close functionality
+// Users MUST use the Cancel button to close modals
 
 document.addEventListener('DOMContentLoaded', function() {
     checkAdvisoryAvailability();

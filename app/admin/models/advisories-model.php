@@ -32,6 +32,17 @@ class AdvisoriesModel {
                     $this->conn->rollBack();
                     return ['success' => false, 'message' => 'This teacher is already assigned as an advisory teacher.'];
                 }
+                
+                // NEW: Check for duplicate advisory name (case-insensitive)
+                $checkNameQuery = "SELECT advisory_id FROM {$this->advisory_table} 
+                                  WHERE LOWER(advisory_name) = LOWER(:advisory_name)";
+                $checkNameStmt = $this->conn->prepare($checkNameQuery);
+                $checkNameStmt->execute([':advisory_name' => $data['advisory_name']]);
+                
+                if ($checkNameStmt->rowCount() > 0) {
+                    $this->conn->rollBack();
+                    return ['success' => false, 'message' => 'An advisory class with this name already exists. Please choose a different name.'];
+                }
             }
             
             // Check for existing role and delete it to prevent duplication

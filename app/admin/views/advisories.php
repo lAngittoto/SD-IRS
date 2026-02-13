@@ -156,14 +156,14 @@ $allStudents = $advisoriesController->getAllStudents();
             <!-- Pagination Section -->
             <div class="flex flex-col sm:flex-row justify-between items-center mt-6 px-2 gap-4">
                 <p id="resultCount" class="text-[11px] text-gray-400 uppercase font-bold tracking-widest">Showing 0 Results</p>
-                
+
                 <div id="paginationContainer" class="flex items-center gap-2">
                     <!-- Pagination buttons will be generated here -->
                 </div>
             </div>
-            
+
         </section>
-        
+
     </div>
 </main>
 
@@ -213,9 +213,9 @@ $allStudents = $advisoriesController->getAllStudents();
                     <select id="modalAdvisoryTeacher" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#043915] bg-white">
                         <option value="">Choose Teacher...</option>
                         <?php foreach ($advisoryTeachers as $teacher): ?>
-                            <option value="<?= $teacher['advisory_id'] ?>" 
-                                    data-current-count="<?= $teacher['student_count'] ?? 0 ?>"
-                                    data-grade-level="<?= $teacher['grade_level'] ?>">
+                            <option value="<?= $teacher['advisory_id'] ?>"
+                                data-current-count="<?= $teacher['student_count'] ?? 0 ?>"
+                                data-grade-level="<?= $teacher['grade_level'] ?>">
                                 <?= htmlspecialchars($teacher['teacher_name']) ?> - <?= htmlspecialchars($teacher['advisory_name']) ?> (Grade <?= $teacher['grade_level'] ?>) - <?= $teacher['student_count'] ?? 0 ?>/40
                             </option>
                         <?php endforeach; ?>
@@ -229,7 +229,7 @@ $allStudents = $advisoriesController->getAllStudents();
                         <div class="flex-1">
                             <p class="text-sm font-bold text-blue-900">Advisory Capacity - Grade <span id="advisoryGradeLevel">7</span></p>
                             <p class="text-xs text-blue-700 mt-1">
-                                <span id="currentStudentCount">0</span> students assigned. 
+                                <span id="currentStudentCount">0</span> students assigned.
                                 You can assign up to <span id="remainingSlots">40</span> more students (Maximum: 40)
                             </p>
                         </div>
@@ -273,7 +273,7 @@ $allStudents = $advisoriesController->getAllStudents();
             </div>
         </div>
 
-        <div class="p-8 bg-gray-50 border-t border-gray-100 flex gap-4">
+        <div class="p-5 bg-gray-50 border-t border-gray-100 flex gap-4">
             <button type="button" onclick="closeStudentModal()" class="flex-1 px-6 py-4 border border-gray-200 text-gray-600 rounded-2xl font-bold text-sm hover:bg-white transition">Cancel</button>
             <button type="button" onclick="confirmStudentAssignment()" class="flex-1 px-6 py-4 bg-[#f8c922] text-[#043915] rounded-2xl font-bold text-sm hover:bg-opacity-90 transition shadow-xl">Confirm Assignment</button>
         </div>
@@ -457,7 +457,7 @@ $allStudents = $advisoriesController->getAllStudents();
                         </label>
                     </div>
                 </div>
-                
+
                 <div class="flex flex-wrap items-center gap-3">
                     <label class="text-sm font-bold text-gray-700">Promote to:</label>
                     <select id="bulkGradeSelect" class="px-4 py-2 border-2 border-gray-300 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
