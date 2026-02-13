@@ -50,8 +50,9 @@ class AdvisoriesController {
                     exit;
                 }
                 
+                // NEW: Validate grade level is selected
                 if (empty($data['grade_level']) || !in_array($data['grade_level'], ['7', '8', '9', '10'])) {
-                    echo json_encode(['success' => false, 'message' => 'Please select a valid grade level.']);
+                    echo json_encode(['success' => false, 'message' => 'Please select a valid grade level (7-10).']);
                     exit;
                 }
             }
@@ -104,6 +105,25 @@ class AdvisoriesController {
                 exit;
             }
             
+            // NEW: Validate grade level match with advisory
+            $advisoryInfo = $this->advisoriesModel->getAdvisoryById($advisory_id);
+            if (!$advisoryInfo) {
+                echo json_encode(['success' => false, 'message' => 'Advisory class not found.']);
+                exit;
+            }
+            
+            $advisoryGrade = $advisoryInfo['grade_level'];
+            foreach ($student_ids as $student_id) {
+                $studentGrade = $grade_levels[$student_id] ?? '';
+                if ($studentGrade !== $advisoryGrade) {
+                    echo json_encode([
+                        'success' => false, 
+                        'message' => "Cannot assign students. This advisory class only accepts Grade {$advisoryGrade} students. Please select students of the correct grade level."
+                    ]);
+                    exit;
+                }
+            }
+            
             $result = $this->advisoriesModel->assignStudentsToAdvisory($advisory_id, $student_ids, $grade_levels);
             echo json_encode($result);
             exit;
@@ -117,19 +137,29 @@ class AdvisoriesController {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $assignment_id = intval($_POST['assignment_id'] ?? 0);
             $new_advisory_id = intval($_POST['new_advisory_id'] ?? 0);
-            $grade_level = intval($_POST['grade_level'] ?? 0);
+            $current_grade = $_POST['current_grade'] ?? '';
             
             if ($assignment_id <= 0 || $new_advisory_id <= 0) {
                 echo json_encode(['success' => false, 'message' => 'Invalid data provided.']);
                 exit;
             }
             
-            if ($grade_level < 7 || $grade_level > 10) {
+            if (!in_array($current_grade, ['7', '8', '9', '10'])) {
                 echo json_encode(['success' => false, 'message' => 'Invalid grade level.']);
                 exit;
             }
             
-            $result = $this->advisoriesModel->reassignStudent($assignment_id, $new_advisory_id, $grade_level);
+            // NEW: Validate grade match
+            $advisoryInfo = $this->advisoriesModel->getAdvisoryById($new_advisory_id);
+            if ($advisoryInfo && $advisoryInfo['grade_level'] !== $current_grade) {
+                echo json_encode([
+                    'success' => false, 
+                    'message' => "Cannot reassign. Student is Grade {$current_grade} but selected advisory is for Grade {$advisoryInfo['grade_level']}."
+                ]);
+                exit;
+            }
+            
+            $result = $this->advisoriesModel->reassignStudent($assignment_id, $new_advisory_id, $current_grade);
             echo json_encode($result);
             exit;
         }
@@ -154,19 +184,60 @@ class AdvisoriesController {
     }
     
     /**
-     * Update student grade level
+     * NEW: Update student grade level
      */
     public function updateStudentGrade() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $assignment_id = intval($_POST['assignment_id'] ?? 0);
-            $grade_level = intval($_POST['grade_level'] ?? 0);
+            $new_grade = trim($_POST['new_grade'] ?? '');
             
-            if ($assignment_id <= 0 || $grade_level < 7 || $grade_level > 10) {
-                echo json_encode(['success' => false, 'message' => 'Invalid data provided.']);
+            if ($assignment_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid assignment ID.']);
                 exit;
             }
             
-            $result = $this->advisoriesModel->updateStudentGrade($assignment_id, $grade_level);
+            if (!in_array($new_grade, ['7', '8', '9', '10'])) {
+                echo json_encode(['success' => false, 'message' => 'Invalid grade level.']);
+                exit;
+            }
+            
+            $result = $this->advisoriesModel->updateStudentGrade($assignment_id, $new_grade);
+            echo json_encode($result);
+            exit;
+        }
+    }
+    
+    /**
+     * NEW: Bulk update student grades (for grade promotion)
+     */
+    public function bulkUpdateStudentGrade() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $assignment_ids = $_POST['assignment_ids'] ?? [];
+            $new_grade = trim($_POST['new_grade'] ?? '');
+            
+            // Validation
+            if (empty($assignment_ids) || !is_array($assignment_ids)) {
+                echo json_encode(['success' => false, 'message' => 'Please select at least one student.']);
+                exit;
+            }
+            
+            if (!in_array($new_grade, ['7', '8', '9', '10'])) {
+                echo json_encode(['success' => false, 'message' => 'Invalid grade level selected.']);
+                exit;
+            }
+            
+            // Sanitize assignment IDs
+            $assignment_ids = array_map('intval', $assignment_ids);
+            $assignment_ids = array_filter($assignment_ids, function($id) {
+                return $id > 0;
+            });
+            
+            if (empty($assignment_ids)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid student selection.']);
+                exit;
+            }
+            
+            $result = $this->advisoriesModel->bulkUpdateStudentGrade($assignment_ids, $new_grade);
             echo json_encode($result);
             exit;
         }
@@ -191,6 +262,13 @@ class AdvisoriesController {
     }
     
     /**
+     * Get all subject teachers
+     */
+    public function getSubjectTeachers() {
+        return $this->advisoriesModel->getSubjectTeachers();
+    }
+    
+    /**
      * Get all students (for assignment modal)
      */
     public function getAllStudents() {
@@ -205,23 +283,10 @@ class AdvisoriesController {
         $grade_level = $filters['grade_level'] ?? '';
         $date_filter = $filters['date_filter'] ?? '';
         $search = $filters['search'] ?? '';
+        $sort_by = $filters['sort_by'] ?? 'student_name';
+        $sort_order = $filters['sort_order'] ?? 'ASC';
         
-        return $this->advisoriesModel->getAssignedStudents($teacher_role, $grade_level, $date_filter, $search);
-    }
-    
-    
-    /**
-     * Get unassigned students
-     */
-    public function getUnassignedStudents() {
-        return $this->advisoriesModel->getUnassignedStudents();
-    }
-    
-    /**
-     * Get advisory details by ID
-     */
-    public function getAdvisoryDetails($advisory_id) {
-        return $this->advisoriesModel->getAdvisoryDetails($advisory_id);
+        return $this->advisoriesModel->getAssignedStudents($teacher_role, $grade_level, $date_filter, $search, $sort_by, $sort_order);
     }
     
     /**
@@ -249,7 +314,9 @@ class AdvisoriesController {
                     'teacher_role' => $_POST['teacher_role'] ?? '',
                     'grade_level' => $_POST['grade_level'] ?? '',
                     'date_filter' => $_POST['date_filter'] ?? '',
-                    'search' => $_POST['search'] ?? ''
+                    'search' => $_POST['search'] ?? '',
+                    'sort_by' => $_POST['sort_by'] ?? 'student_name',
+                    'sort_order' => $_POST['sort_order'] ?? 'ASC'
                 ];
                 
                 $data = $this->getAssignedStudents($filters);
@@ -258,7 +325,8 @@ class AdvisoriesController {
                 
             case 'get_unassigned_students':
                 $advisory_id = $_POST['advisory_id'] ?? 0;
-                $students = $this->advisoriesModel->getUnassignedStudents($advisory_id);
+                $grade_level = $_POST['grade_level'] ?? '';
+                $students = $this->advisoriesModel->getUnassignedStudents($advisory_id, $grade_level);
                 echo json_encode(['success' => true, 'data' => $students]);
                 break;
                 
@@ -267,8 +335,15 @@ class AdvisoriesController {
                 echo json_encode(['success' => true, 'data' => $teachers]);
                 break;
                 
+            case 'get_subject_teachers':
+                $teachers = $this->getSubjectTeachers();
+                echo json_encode(['success' => true, 'data' => $teachers]);
+                break;
+                
             case 'get_advisory_list':
-                $advisories = $this->advisoriesModel->getAdvisoryList();
+                $sort_by = $_POST['sort_by'] ?? 'advisory_name';
+                $sort_order = $_POST['sort_order'] ?? 'ASC';
+                $advisories = $this->advisoriesModel->getAdvisoryList($sort_by, $sort_order);
                 echo json_encode(['success' => true, 'data' => $advisories]);
                 break;
                 
@@ -310,17 +385,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $advisoriesController->removeFromAdvisory();
             break;
             
-        case 'update_grade':
+        case 'convert_to_subject':
+            $advisoriesController->convertToSubjectTeacher();
+            break;
+            
+        case 'update_student_grade':
             $advisoriesController->updateStudentGrade();
             break;
             
-        case 'convert_to_subject':
-            $advisoriesController->convertToSubjectTeacher();
+        case 'bulk_update_student_grade':
+            $advisoriesController->bulkUpdateStudentGrade();
             break;
             
         case 'get_filtered_data':
         case 'get_unassigned_students':
         case 'get_advisory_teachers':
+        case 'get_subject_teachers':
         case 'get_advisory_list':
         case 'get_advisory_students':
             $advisoriesController->handleAjaxRequest();

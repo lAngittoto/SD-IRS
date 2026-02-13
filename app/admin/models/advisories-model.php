@@ -15,34 +15,40 @@ class AdvisoriesModel {
     // ============================================
     
     /**
-     * Assign a teacher as advisory teacher
+     * Assign a teacher as advisory or subject teacher
      */
     public function assignAdvisoryTeacher($data) {
         try {
             $this->conn->beginTransaction();
             
-            // Check if teacher already has advisory assignment
-            $checkQuery = "SELECT advisory_id FROM {$this->advisory_table} 
-                          WHERE teacher_id = :teacher_id";
-            $checkStmt = $this->conn->prepare($checkQuery);
-            $checkStmt->execute([':teacher_id' => $data['teacher_id']]);
-            
-            if ($checkStmt->rowCount() > 0) {
-                $this->conn->rollBack();
-                return ['success' => false, 'message' => 'This teacher is already assigned as an advisory teacher.'];
+            // Check if teacher already has advisory assignment (only for advisory role)
+            if ($data['role_type'] === 'advisory') {
+                $checkQuery = "SELECT advisory_id FROM {$this->advisory_table} 
+                              WHERE teacher_id = :teacher_id";
+                $checkStmt = $this->conn->prepare($checkQuery);
+                $checkStmt->execute([':teacher_id' => $data['teacher_id']]);
+                
+                if ($checkStmt->rowCount() > 0) {
+                    $this->conn->rollBack();
+                    return ['success' => false, 'message' => 'This teacher is already assigned as an advisory teacher.'];
+                }
             }
             
-            // Insert or update teacher role
+            // Check for existing role and delete it to prevent duplication
+            $deleteRoleQuery = "DELETE FROM {$this->teacher_roles_table} WHERE teacher_id = :teacher_id";
+            $deleteRoleStmt = $this->conn->prepare($deleteRoleQuery);
+            $deleteRoleStmt->execute([':teacher_id' => $data['teacher_id']]);
+            
+            // Insert new teacher role
             $roleQuery = "INSERT INTO {$this->teacher_roles_table} (teacher_id, role_type) 
-                         VALUES (:teacher_id, :role_type)
-                         ON DUPLICATE KEY UPDATE role_type = :role_type";
+                         VALUES (:teacher_id, :role_type)";
             $roleStmt = $this->conn->prepare($roleQuery);
             $roleStmt->execute([
                 ':teacher_id' => $data['teacher_id'],
                 ':role_type' => $data['role_type']
             ]);
             
-            // If advisory teacher, insert advisory class
+            // If advisory teacher, insert advisory class WITH GRADE LEVEL
             if ($data['role_type'] === 'advisory') {
                 $query = "INSERT INTO {$this->advisory_table} 
                          (teacher_id, advisory_name, grade_level, created_at) 
@@ -101,12 +107,16 @@ class AdvisoriesModel {
             $deleteAdvisoryStmt = $this->conn->prepare($deleteAdvisoryQuery);
             $deleteAdvisoryStmt->execute([':advisory_id' => $advisory_id]);
             
-            // Update teacher role to subject
-            $updateRoleQuery = "UPDATE {$this->teacher_roles_table} 
-                               SET role_type = 'subject' 
-                               WHERE teacher_id = :teacher_id";
-            $updateRoleStmt = $this->conn->prepare($updateRoleQuery);
-            $updateRoleStmt->execute([':teacher_id' => $teacher['teacher_id']]);
+            // Delete existing role first to prevent duplication
+            $deleteRoleQuery = "DELETE FROM {$this->teacher_roles_table} WHERE teacher_id = :teacher_id";
+            $deleteRoleStmt = $this->conn->prepare($deleteRoleQuery);
+            $deleteRoleStmt->execute([':teacher_id' => $teacher['teacher_id']]);
+            
+            // Insert new subject role
+            $insertRoleQuery = "INSERT INTO {$this->teacher_roles_table} (teacher_id, role_type) 
+                               VALUES (:teacher_id, 'subject')";
+            $insertRoleStmt = $this->conn->prepare($insertRoleQuery);
+            $insertRoleStmt->execute([':teacher_id' => $teacher['teacher_id']]);
             
             $this->conn->commit();
             return ['success' => true, 'message' => 'Teacher converted to subject teacher successfully. All students removed.'];
@@ -128,6 +138,18 @@ class AdvisoriesModel {
         try {
             $this->conn->beginTransaction();
             
+            // Check if advisory exists
+            $advisoryQuery = "SELECT advisory_id, grade_level FROM {$this->advisory_table} 
+                             WHERE advisory_id = :advisory_id";
+            $advisoryStmt = $this->conn->prepare($advisoryQuery);
+            $advisoryStmt->execute([':advisory_id' => $advisory_id]);
+            $advisory = $advisoryStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$advisory) {
+                $this->conn->rollBack();
+                return ['success' => false, 'message' => 'Advisory class not found.'];
+            }
+            
             // Check current student count
             $countQuery = "SELECT COUNT(*) as current_count FROM {$this->assignment_table} 
                           WHERE advisory_id = :advisory_id";
@@ -148,7 +170,7 @@ class AdvisoriesModel {
             
             foreach ($student_ids as $student_id) {
                 $student_id = intval($student_id);
-                $grade_level = isset($grade_levels[$student_id]) ? intval($grade_levels[$student_id]) : 7;
+                $grade_level = isset($grade_levels[$student_id]) ? $grade_levels[$student_id] : $advisory['grade_level'];
                 
                 // Check if student already assigned
                 $checkQuery = "SELECT assignment_id FROM {$this->assignment_table} 
@@ -194,8 +216,10 @@ class AdvisoriesModel {
     /**
      * Reassign student to different advisory teacher
      */
-    public function reassignStudent($assignment_id, $new_advisory_id, $grade_level) {
+    public function reassignStudent($assignment_id, $new_advisory_id, $current_grade) {
         try {
+            $this->conn->beginTransaction();
+            
             // Check if new advisory has space
             $countQuery = "SELECT COUNT(*) as current_count FROM {$this->assignment_table} 
                           WHERE advisory_id = :advisory_id";
@@ -204,25 +228,26 @@ class AdvisoriesModel {
             $currentCount = $countStmt->fetch(PDO::FETCH_ASSOC)['current_count'];
             
             if ($currentCount >= 40) {
+                $this->conn->rollBack();
                 return ['success' => false, 'message' => 'Cannot reassign. The selected advisory class is full (40/40 students).'];
             }
             
             $query = "UPDATE {$this->assignment_table} 
                      SET advisory_id = :new_advisory_id, 
-                         grade_level = :grade_level,
                          assigned_date = NOW()
                      WHERE assignment_id = :assignment_id";
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute([
                 ':new_advisory_id' => $new_advisory_id,
-                ':grade_level' => $grade_level,
                 ':assignment_id' => $assignment_id
             ]);
             
+            $this->conn->commit();
             return ['success' => true, 'message' => 'Student reassigned successfully!'];
             
         } catch (PDOException $e) {
+            $this->conn->rollBack();
             return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
         }
     }
@@ -246,23 +271,151 @@ class AdvisoriesModel {
     }
     
     /**
-     * Update student grade level
+     * NEW: Update student grade level
      */
-    public function updateStudentGrade($assignment_id, $grade_level) {
+    public function updateStudentGrade($assignment_id, $new_grade) {
         try {
-            $query = "UPDATE {$this->assignment_table} 
-                     SET grade_level = :grade_level 
-                     WHERE assignment_id = :assignment_id";
+            $this->conn->beginTransaction();
             
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([
-                ':grade_level' => $grade_level,
+            // Get current assignment info
+            $getQuery = "SELECT aa.advisory_id, a.grade_level as advisory_grade 
+                        FROM {$this->assignment_table} aa
+                        INNER JOIN {$this->advisory_table} a ON aa.advisory_id = a.advisory_id
+                        WHERE aa.assignment_id = :assignment_id";
+            $getStmt = $this->conn->prepare($getQuery);
+            $getStmt->execute([':assignment_id' => $assignment_id]);
+            $assignment = $getStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$assignment) {
+                $this->conn->rollBack();
+                return ['success' => false, 'message' => 'Assignment not found.'];
+            }
+            
+            // If new grade doesn't match advisory grade, remove from advisory
+            if ($new_grade !== $assignment['advisory_grade']) {
+                $deleteQuery = "DELETE FROM {$this->assignment_table} 
+                               WHERE assignment_id = :assignment_id";
+                $deleteStmt = $this->conn->prepare($deleteQuery);
+                $deleteStmt->execute([':assignment_id' => $assignment_id]);
+                
+                $this->conn->commit();
+                return [
+                    'success' => true, 
+                    'message' => "Student promoted to Grade {$new_grade}. They have been removed from their current advisory and are now available for assignment to a Grade {$new_grade} advisory class.",
+                    'grade_changed' => true
+                ];
+            }
+            
+            // Update grade level if it matches advisory
+            $updateQuery = "UPDATE {$this->assignment_table} 
+                           SET grade_level = :new_grade 
+                           WHERE assignment_id = :assignment_id";
+            $updateStmt = $this->conn->prepare($updateQuery);
+            $updateStmt->execute([
+                ':new_grade' => $new_grade,
                 ':assignment_id' => $assignment_id
             ]);
             
-            return ['success' => true, 'message' => 'Grade level updated successfully!'];
+            $this->conn->commit();
+            return ['success' => true, 'message' => 'Student grade updated successfully!'];
             
         } catch (PDOException $e) {
+            $this->conn->rollBack();
+            return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
+     * NEW: Bulk update student grades (for grade promotion)
+     */
+    public function bulkUpdateStudentGrade($assignment_ids, $new_grade) {
+        try {
+            $this->conn->beginTransaction();
+            
+            $successCount = 0;
+            $errorMessages = [];
+            $promotedStudents = [];
+            
+            foreach ($assignment_ids as $assignment_id) {
+                // Get current assignment info including student_id
+                $getQuery = "SELECT aa.assignment_id, aa.student_id, aa.advisory_id, aa.grade_level as current_grade, 
+                                    a.grade_level as advisory_grade, s.name as student_name
+                            FROM {$this->assignment_table} aa
+                            INNER JOIN {$this->advisory_table} a ON aa.advisory_id = a.advisory_id
+                            INNER JOIN {$this->users_table} s ON aa.student_id = s.user_id
+                            WHERE aa.assignment_id = :assignment_id";
+                $getStmt = $this->conn->prepare($getQuery);
+                $getStmt->execute([':assignment_id' => $assignment_id]);
+                $assignment = $getStmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$assignment) {
+                    $errorMessages[] = "Assignment ID {$assignment_id} not found";
+                    continue;
+                }
+                
+                // Validate promotion is to higher grade
+                if (intval($new_grade) <= intval($assignment['current_grade'])) {
+                    $errorMessages[] = "{$assignment['student_name']} cannot be promoted to same or lower grade";
+                    continue;
+                }
+                
+                // Store promoted student info
+                $promotedStudents[] = [
+                    'student_id' => $assignment['student_id'],
+                    'old_grade' => $assignment['current_grade'],
+                    'new_grade' => $new_grade
+                ];
+                
+                // Create a promotion record BEFORE deleting (audit trail)
+                // First check if student_promotions table exists, if not create it
+                $createTableQuery = "CREATE TABLE IF NOT EXISTS student_promotions (
+                    promotion_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    student_id INT UNSIGNED NOT NULL,
+                    from_grade ENUM('7', '8', '9', '10') NOT NULL,
+                    to_grade ENUM('7', '8', '9', '10') NOT NULL,
+                    promoted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_student (student_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+                
+                $this->conn->exec($createTableQuery);
+                
+                // Insert promotion record
+                $insertPromotionQuery = "INSERT INTO student_promotions (student_id, from_grade, to_grade) 
+                                        VALUES (:student_id, :from_grade, :to_grade)";
+                $insertPromotionStmt = $this->conn->prepare($insertPromotionQuery);
+                $insertPromotionStmt->execute([
+                    ':student_id' => $assignment['student_id'],
+                    ':from_grade' => $assignment['current_grade'],
+                    ':to_grade' => $new_grade
+                ]);
+                
+                // Remove from current advisory (since they're moving to new grade)
+                $deleteQuery = "DELETE FROM {$this->assignment_table} 
+                               WHERE assignment_id = :assignment_id";
+                $deleteStmt = $this->conn->prepare($deleteQuery);
+                $deleteStmt->execute([':assignment_id' => $assignment_id]);
+                
+                $successCount++;
+            }
+            
+            $this->conn->commit();
+            
+            if ($successCount > 0) {
+                $message = "{$successCount} student(s) promoted to Grade {$new_grade}. ";
+                $message .= "They have been removed from their current advisory and are now available for assignment to Grade {$new_grade} advisory classes.";
+                
+                if (!empty($errorMessages)) {
+                    $message .= " Note: " . implode(', ', $errorMessages);
+                }
+                
+                return ['success' => true, 'message' => $message, 'promoted_grade' => $new_grade];
+            } else {
+                $this->conn->rollBack();
+                return ['success' => false, 'message' => 'No students were promoted. ' . implode(', ', $errorMessages)];
+            }
+            
+        } catch (PDOException $e) {
+            $this->conn->rollBack();
             return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
         }
     }
@@ -272,11 +425,26 @@ class AdvisoriesModel {
     // ============================================
     
     /**
-     * Get all teachers (for dropdown selection)
+     * Get advisory by ID
+     */
+    public function getAdvisoryById($advisory_id) {
+        try {
+            $query = "SELECT advisory_id, teacher_id, advisory_name, grade_level 
+                     FROM {$this->advisory_table} 
+                     WHERE advisory_id = :advisory_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([':advisory_id' => $advisory_id]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
+    
+    /**
+     * Get all teachers (for dropdown selection) - exclude those with advisory
      */
     public function getAllTeachers() {
         try {
-            // Get teachers who don't have an advisory assignment yet
             $query = "SELECT u.user_id, u.name, u.email 
                      FROM {$this->users_table} u
                      LEFT JOIN {$this->advisory_table} a ON u.user_id = a.teacher_id
@@ -326,11 +494,36 @@ class AdvisoriesModel {
     }
     
     /**
-     * Get all students (for assignment modal) - only unassigned students for specific advisory
+     * Get all subject teachers
+     */
+    public function getSubjectTeachers() {
+        try {
+            $query = "SELECT 
+                        u.user_id as teacher_id,
+                        u.name as teacher_name,
+                        u.email as teacher_email,
+                        tr.role_type,
+                        tr.assigned_at
+                     FROM {$this->teacher_roles_table} tr
+                     INNER JOIN {$this->users_table} u ON tr.teacher_id = u.user_id
+                     WHERE tr.role_type = 'subject'
+                     ORDER BY tr.assigned_at DESC";
+            
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+    
+    /**
+     * Get all students - only unassigned ones
      */
     public function getAllStudents() {
         try {
-            // Get only students who are NOT currently assigned to any advisory
             $query = "SELECT DISTINCT
                         u.user_id, 
                         u.name, 
@@ -352,14 +545,29 @@ class AdvisoriesModel {
     }
     
     /**
-     * Get unassigned students for a specific advisory (excluding already assigned)
+     * Get unassigned students - with their current grade from promotion history
      */
-    public function getUnassignedStudents($advisory_id = 0) {
+    public function getUnassignedStudents($advisory_id = 0, $grade_level = '') {
         try {
-            $query = "SELECT u.user_id, u.name, u.lrn, '7' as grade_level
+            // Get unassigned students with their current grade from latest promotion record
+            // If no promotion record exists, default to Grade 7
+            $query = "SELECT 
+                        u.user_id, 
+                        u.name, 
+                        u.lrn,
+                        COALESCE(
+                            (SELECT sp.to_grade 
+                             FROM student_promotions sp 
+                             WHERE sp.student_id = u.user_id 
+                             ORDER BY sp.promoted_at DESC 
+                             LIMIT 1),
+                            '7'
+                        ) as grade_level
                      FROM {$this->users_table} u
-                     LEFT JOIN {$this->assignment_table} aa ON u.user_id = aa.student_id
-                     WHERE u.role = 'Student' AND aa.assignment_id IS NULL
+                     WHERE u.role = 'Student' 
+                     AND u.user_id NOT IN (
+                         SELECT student_id FROM {$this->assignment_table}
+                     )
                      ORDER BY u.name ASC";
             
             $stmt = $this->conn->prepare($query);
@@ -373,10 +581,27 @@ class AdvisoriesModel {
     }
     
     /**
-     * Get assigned students with filters and search
+     * Get assigned students with filters, search, and sorting
      */
-    public function getAssignedStudents($teacher_role = '', $grade_level = '', $date_filter = '', $search = '') {
+    public function getAssignedStudents($teacher_role = '', $grade_level = '', $date_filter = '', $search = '', $sort_by = 'student_name', $sort_order = 'ASC') {
         try {
+            // Validate sort parameters
+            $validSortColumns = ['student_name', 'lrn', 'grade_level', 'teacher_name', 'advisory_name', 'assigned_date'];
+            $sort_by = in_array($sort_by, $validSortColumns) ? $sort_by : 'student_name';
+            $sort_order = strtoupper($sort_order) === 'DESC' ? 'DESC' : 'ASC';
+            
+            // Map sort column names to actual database columns
+            $sortColumnMap = [
+                'student_name' => 's.name',
+                'lrn' => 's.lrn',
+                'grade_level' => 'aa.grade_level',
+                'teacher_name' => 't.name',
+                'advisory_name' => 'at.advisory_name',
+                'assigned_date' => 'aa.assigned_date'
+            ];
+            
+            $orderByColumn = $sortColumnMap[$sort_by] ?? 's.name';
+            
             $query = "SELECT 
                         aa.assignment_id,
                         aa.student_id,
@@ -422,7 +647,7 @@ class AdvisoriesModel {
                 $params[':search'] = "%$search%";
             }
             
-            $query .= " ORDER BY aa.assigned_date DESC";
+            $query .= " ORDER BY {$orderByColumn} {$sort_order}";
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute($params);
@@ -435,10 +660,25 @@ class AdvisoriesModel {
     }
     
     /**
-     * Get advisory list for filter view
+     * Get advisory list for filter view with sorting
      */
-    public function getAdvisoryList() {
+    public function getAdvisoryList($sort_by = 'advisory_name', $sort_order = 'ASC') {
         try {
+            // Validate sort parameters
+            $validSortColumns = ['advisory_name', 'teacher_name', 'grade_level', 'student_count'];
+            $sort_by = in_array($sort_by, $validSortColumns) ? $sort_by : 'advisory_name';
+            $sort_order = strtoupper($sort_order) === 'DESC' ? 'DESC' : 'ASC';
+            
+            // Map sort columns
+            $sortColumnMap = [
+                'advisory_name' => 'a.advisory_name',
+                'teacher_name' => 'u.name',
+                'grade_level' => 'a.grade_level',
+                'student_count' => 'student_count'
+            ];
+            
+            $orderByColumn = $sortColumnMap[$sort_by] ?? 'a.advisory_name';
+            
             $query = "SELECT 
                         a.advisory_id,
                         a.advisory_name,
@@ -449,7 +689,7 @@ class AdvisoriesModel {
                      INNER JOIN {$this->users_table} u ON a.teacher_id = u.user_id
                      LEFT JOIN {$this->assignment_table} aa ON a.advisory_id = aa.advisory_id
                      GROUP BY a.advisory_id, a.advisory_name, a.grade_level, u.name
-                     ORDER BY a.advisory_name ASC";
+                     ORDER BY {$orderByColumn} {$sort_order}";
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute();
@@ -458,38 +698,6 @@ class AdvisoriesModel {
             
         } catch (PDOException $e) {
             return [];
-        }
-    }
-    
-    /**
-     * Get advisory details by ID
-     */
-    public function getAdvisoryDetails($advisory_id) {
-        try {
-            $query = "SELECT 
-                        a.advisory_id,
-                        a.teacher_id,
-                        u.name as teacher_name,
-                        u.email as teacher_email,
-                        a.advisory_name,
-                        a.grade_level,
-                        tr.role_type,
-                        a.created_at as assigned_date,
-                        COUNT(aa.assignment_id) as student_count
-                     FROM {$this->advisory_table} a
-                     INNER JOIN {$this->users_table} u ON a.teacher_id = u.user_id
-                     LEFT JOIN {$this->teacher_roles_table} tr ON a.teacher_id = tr.teacher_id
-                     LEFT JOIN {$this->assignment_table} aa ON a.advisory_id = aa.advisory_id
-                     WHERE a.advisory_id = :advisory_id
-                     GROUP BY a.advisory_id, a.teacher_id, u.name, u.email, a.advisory_name, a.grade_level, tr.role_type, a.created_at";
-            
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([':advisory_id' => $advisory_id]);
-            
-            return $stmt->fetch(PDO::FETCH_ASSOC);
-            
-        } catch (PDOException $e) {
-            return null;
         }
     }
     

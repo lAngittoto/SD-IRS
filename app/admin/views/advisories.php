@@ -64,6 +64,19 @@ $allStudents = $advisoriesController->getAllStudents();
 
                 <div class="flex flex-col">
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <div class="w-6 h-6 bg-purple-50 rounded flex items-center justify-center">
+                            <i class="fa-solid fa-arrow-down-a-z text-purple-500 text-[10px]"></i>
+                        </div>
+                        Sort Name
+                    </label>
+                    <select name="sort_name" id="sortName" class="w-full border border-gray-100 rounded-xl px-3 py-2.5 text-sm bg-gray-50 focus:ring-2 focus:ring-[#043915]">
+                        <option value="ASC">A to Z</option>
+                        <option value="DESC">Z to A</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                         <div class="w-6 h-6 bg-orange-50 rounded flex items-center justify-center">
                             <i class="fa-solid fa-user-graduate text-orange-500 text-[10px]"></i>
                         </div>
@@ -111,9 +124,10 @@ $allStudents = $advisoriesController->getAllStudents();
         <!-- Main Content Table -->
         <section class="flex-1 w-full overflow-hidden">
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[60vh] overflow-hidden">
-                <div class="overflow-x-auto w-full">
+                <!-- Fixed height table container with scrollbar -->
+                <div class="overflow-x-auto w-full flex-1" style="max-height: 600px; overflow-y: auto;">
                     <table class="w-full border-separate border-spacing-0">
-                        <thead>
+                        <thead class="sticky top-0 z-10">
                             <tr class="bg-[#043915]">
                                 <th class="py-4 px-6 text-left text-[10px] font-bold text-white uppercase tracking-widest border-b border-green-800">Student Name</th>
                                 <th class="py-4 px-6 text-left text-[10px] font-bold text-white uppercase tracking-widest border-b border-green-800">LRN</th>
@@ -139,8 +153,13 @@ $allStudents = $advisoriesController->getAllStudents();
                 </div>
             </div>
 
+            <!-- Pagination Section -->
             <div class="flex flex-col sm:flex-row justify-between items-center mt-6 px-2 gap-4">
-                <p class="text-[11px] text-gray-400 uppercase font-bold tracking-widest">Showing  Results</p>
+                <p id="resultCount" class="text-[11px] text-gray-400 uppercase font-bold tracking-widest">Showing 0 Results</p>
+                
+                <div id="paginationContainer" class="flex items-center gap-2">
+                    <!-- Pagination buttons will be generated here -->
+                </div>
             </div>
             
         </section>
@@ -156,53 +175,71 @@ $allStudents = $advisoriesController->getAllStudents();
                 <h2 class="text-2xl font-black text-[#043915]">Assign Students</h2>
                 <p class="text-xs text-gray-500 uppercase tracking-widest font-bold">Select students and assign to an Advisory Teacher</p>
             </div>
-            <div class="flex items-center gap-3">
-                <div class="w-full md:w-64">
-                    <label class="text-[10px] font-bold text-gray-400 uppercase block mb-1">Select Advisory Teacher</label>
-                    <select id="modalAdvisoryTeacher" class="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-[#043915] bg-white" onchange="updateStudentList()">
-                        <option value="">Choose Teacher...</option>
-                        <?php foreach ($advisoryTeachers as $teacher): ?>
-                            <option value="<?= $teacher['advisory_id'] ?>" data-current-count="<?= $teacher['student_count'] ?? 0 ?>">
-                                <?= htmlspecialchars($teacher['teacher_name']) ?> - <?= htmlspecialchars($teacher['advisory_name']) ?> (<?= $teacher['student_count'] ?? 0 ?>/40)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <button onclick="closeStudentModal()" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- Advisory Capacity Info -->
-        <div id="advisoryCapacityInfo" class="hidden px-8 pt-4">
-            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
-                <i class="fa-solid fa-info-circle text-blue-500 text-xl"></i>
-                <div class="flex-1">
-                    <p class="text-sm font-bold text-blue-900">Advisory Capacity</p>
-                    <p class="text-xs text-blue-700 mt-1">
-                        <span id="currentStudentCount">0</span> students assigned. 
-                        You can assign up to <span id="remainingSlots">40</span> more students (Maximum: 40)
-                    </p>
-                </div>
-            </div>
+            <button onclick="closeStudentModal()" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all md:ml-auto">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
         </div>
 
         <div class="p-8 overflow-hidden flex flex-col flex-1">
+            <!-- Grade Filter Tabs -->
+            <div class="flex flex-wrap items-center gap-2 mb-6 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
+                <span class="text-[10px] font-bold text-gray-400 uppercase mr-2">Filter by Grade:</span>
+                <button type="button" onclick="filterModalStudents('all')" id="gradeTab_all" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold uppercase transition hover:bg-gray-200">
+                    All
+                </button>
+                <button type="button" onclick="filterModalStudents('7')" id="gradeTab_7" class="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold uppercase transition hover:bg-blue-100">
+                    Grade 7
+                </button>
+                <button type="button" onclick="filterModalStudents('8')" id="gradeTab_8" class="px-4 py-2 bg-orange-50 text-orange-600 rounded-lg text-xs font-bold uppercase transition hover:bg-orange-100">
+                    Grade 8
+                </button>
+                <button type="button" onclick="filterModalStudents('9')" id="gradeTab_9" class="px-4 py-2 bg-purple-50 text-purple-600 rounded-lg text-xs font-bold uppercase transition hover:bg-purple-100">
+                    Grade 9
+                </button>
+                <button type="button" onclick="filterModalStudents('10')" id="gradeTab_10" class="px-4 py-2 bg-green-50 text-green-600 rounded-lg text-xs font-bold uppercase transition hover:bg-green-100">
+                    Grade 10
+                </button>
+            </div>
+
             <div id="loadingStudents" class="hidden py-12 text-center">
                 <i class="fa-solid fa-spinner fa-spin text-4xl text-[#043915] mb-3"></i>
                 <p class="text-sm text-gray-600">Loading students...</p>
             </div>
 
-            <div id="studentListContainer" class="hidden flex flex-col h-full">
+            <div id="studentListContainer" class="flex flex-col h-full">
+                <!-- Advisory Selection -->
+                <div class="mb-6">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase block mb-2">Select Advisory Teacher</label>
+                    <select id="modalAdvisoryTeacher" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#043915] bg-white">
+                        <option value="">Choose Teacher...</option>
+                        <?php foreach ($advisoryTeachers as $teacher): ?>
+                            <option value="<?= $teacher['advisory_id'] ?>" 
+                                    data-current-count="<?= $teacher['student_count'] ?? 0 ?>"
+                                    data-grade-level="<?= $teacher['grade_level'] ?>">
+                                <?= htmlspecialchars($teacher['teacher_name']) ?> - <?= htmlspecialchars($teacher['advisory_name']) ?> (Grade <?= $teacher['grade_level'] ?>) - <?= $teacher['student_count'] ?? 0 ?>/40
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Advisory Capacity Info -->
+                <div id="advisoryCapacityInfo" class="hidden mb-6">
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                        <i class="fa-solid fa-info-circle text-blue-500 text-xl"></i>
+                        <div class="flex-1">
+                            <p class="text-sm font-bold text-blue-900">Advisory Capacity - Grade <span id="advisoryGradeLevel">7</span></p>
+                            <p class="text-xs text-blue-700 mt-1">
+                                <span id="currentStudentCount">0</span> students assigned. 
+                                You can assign up to <span id="remainingSlots">40</span> more students (Maximum: 40)
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex flex-wrap items-center gap-3 mb-6 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                     <span class="text-[10px] font-bold text-gray-400 uppercase mr-2">Quick Select:</span>
-                    <button type="button" onclick="toggleAllStudents(true)" class="px-4 py-2 bg-[#043915] text-white rounded-lg text-[10px] font-bold uppercase transition hover:bg-opacity-90">All Students</button>
-                    <button type="button" onclick="selectByGrade('7')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-[10px] font-bold uppercase hover:bg-blue-200 transition">Grade 7</button>
-                    <button type="button" onclick="selectByGrade('8')" class="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg text-[10px] font-bold uppercase hover:bg-orange-200 transition">Grade 8</button>
-                    <button type="button" onclick="selectByGrade('9')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-[10px] font-bold uppercase hover:bg-purple-200 transition">Grade 9</button>
-                    <button type="button" onclick="selectByGrade('10')" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-[10px] font-bold uppercase hover:bg-green-200 transition">Grade 10</button>
-                    <button type="button" onclick="toggleAllStudents(false)" class="px-4 py-2 border border-red-200 text-red-500 rounded-lg text-[10px] font-bold uppercase hover:bg-red-50 transition ml-auto">Clear</button>
+                    <button type="button" onclick="toggleAllVisibleStudents(true)" class="px-4 py-2 bg-[#043915] text-white rounded-lg text-[10px] font-bold uppercase transition hover:bg-opacity-90">Select All Visible</button>
+                    <button type="button" onclick="toggleAllVisibleStudents(false)" class="px-4 py-2 border border-red-200 text-red-500 rounded-lg text-[10px] font-bold uppercase hover:bg-red-50 transition ml-auto">Clear Selection</button>
                 </div>
 
                 <div class="flex-1 overflow-y-auto rounded-xl border border-gray-100" style="max-height: 400px;">
@@ -216,22 +253,23 @@ $allStudents = $advisoriesController->getAllStudents();
                                     <th class="py-4 px-6 border-b">Select</th>
                                     <th class="py-4 px-6 border-b">Student Name</th>
                                     <th class="py-4 px-6 border-b">LRN</th>
-                                    <th class="py-4 px-6 border-b">Grade Level</th>
-                                    <th class="py-4 px-6 border-b text-center">Set Grade</th>
+                                    <th class="py-4 px-6 border-b">Current Grade</th>
                                 </tr>
                             </thead>
                             <tbody id="modalStudentTable" class="divide-y divide-gray-50">
-                                <!-- Students will be loaded dynamically -->
+                                <tr>
+                                    <td colspan="4" class="py-12 text-center">
+                                        <div class="flex flex-col items-center justify-center text-gray-400">
+                                            <i class="fa-solid fa-users text-4xl mb-3 opacity-20"></i>
+                                            <p class="text-sm font-medium text-gray-600">Loading Available Students...</p>
+                                            <p class="text-xs text-gray-500 mt-1">Please wait while we fetch the student list</p>
+                                        </div>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </form>
                 </div>
-            </div>
-
-            <div id="selectAdvisoryMessage" class="py-12 text-center">
-                <i class="fa-solid fa-chalkboard-user text-4xl text-gray-300 mb-3"></i>
-                <p class="text-sm font-medium text-gray-600">Select an Advisory Teacher</p>
-                <p class="text-xs text-gray-500 mt-1">Choose an advisory teacher from the dropdown above to view available students</p>
             </div>
         </div>
 
@@ -313,6 +351,7 @@ $allStudents = $advisoriesController->getAllStudents();
         <form id="reassignForm" onsubmit="submitReassignment(event)">
             <input type="hidden" name="action" value="reassign_student">
             <input type="hidden" name="assignment_id" id="reassignAssignmentId">
+            <input type="hidden" name="current_grade" id="reassignCurrentGrade">
 
             <div class="space-y-4">
                 <div>
@@ -320,20 +359,10 @@ $allStudents = $advisoriesController->getAllStudents();
                     <select name="new_advisory_id" id="reassignAdvisorySelect" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#043915] bg-white">
                         <option value="">Select New Advisory...</option>
                         <?php foreach ($advisoryTeachers as $teacher): ?>
-                            <option value="<?= $teacher['advisory_id'] ?>">
+                            <option value="<?= $teacher['advisory_id'] ?>" data-grade="<?= $teacher['grade_level'] ?>">
                                 <?= htmlspecialchars($teacher['teacher_name']) ?> - <?= htmlspecialchars($teacher['advisory_name']) ?> (Grade <?= $teacher['grade_level'] ?>)
                             </option>
                         <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="text-[10px] font-bold text-gray-400 uppercase block mb-1">Grade Level</label>
-                    <select name="grade_level" id="reassignGradeSelect" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#043915] bg-gray-50">
-                        <option value="7">Grade 7</option>
-                        <option value="8">Grade 8</option>
-                        <option value="9">Grade 9</option>
-                        <option value="10">Grade 10</option>
                     </select>
                 </div>
 
@@ -395,7 +424,7 @@ $allStudents = $advisoriesController->getAllStudents();
     </div>
 </div>
 
-<!-- View Advisory Details Modal -->
+<!-- View Advisory Details Modal with Grade Promotion -->
 <div id="viewAdvisoryModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
     <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
         <div class="p-8 border-b border-gray-100 bg-gray-50/50 flex justify-between items-start">
@@ -409,6 +438,38 @@ $allStudents = $advisoriesController->getAllStudents();
         </div>
 
         <div class="p-8 overflow-y-auto flex-1">
+            <!-- Grade Promotion Controls -->
+            <div id="gradePromotionControls" class="hidden mb-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-200">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
+                            <i class="fa-solid fa-graduation-cap text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">Grade Promotion</h3>
+                            <p class="text-xs text-gray-600">Select students and promote to higher grade</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition">
+                            <input type="checkbox" id="selectAllStudentsPromotion" onchange="toggleAllStudentsPromotion(this.checked)" class="w-4 h-4 text-blue-600 rounded">
+                            <span class="text-sm font-bold text-gray-700">Select All</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-3">
+                    <label class="text-sm font-bold text-gray-700">Promote to:</label>
+                    <select id="bulkGradeSelect" class="px-4 py-2 border-2 border-gray-300 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                        <option value="">Select Grade Level</option>
+                    </select>
+                    <button type="button" onclick="confirmBulkGradePromotion()" class="px-6 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition shadow-md">
+                        <i class="fa-solid fa-arrow-up mr-2"></i>Confirm Promotion
+                    </button>
+                    <span id="selectedCount" class="text-xs font-bold text-gray-600 ml-auto">0 students selected</span>
+                </div>
+            </div>
+
             <div id="advisoryStudentsList">
                 <!-- Student list will be loaded here -->
             </div>
