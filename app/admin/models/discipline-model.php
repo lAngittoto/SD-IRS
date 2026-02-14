@@ -14,7 +14,12 @@ class DisciplineModel {
         
         $stmt = $this->db->prepare("
             SELECT 
-                d.*,
+                d.discipline_id,
+                d.violation_name,
+                d.id_sanctions,
+                d.id_warning,
+                d.description,
+                d.date_created,
                 s.name as sanction,
                 w.name as severity
             FROM discipline d
@@ -37,13 +42,18 @@ class DisciplineModel {
     public function getDisciplineById($id) {
         $stmt = $this->db->prepare("
             SELECT 
-                d.*,
+                d.discipline_id,
+                d.violation_name,
+                d.id_sanctions,
+                d.id_warning,
+                d.description,
+                d.date_created,
                 s.name as sanction,
                 w.name as severity
             FROM discipline d
             LEFT JOIN sanctions s ON d.id_sanctions = s.id_sanctions
             LEFT JOIN warning_levels w ON d.id_warning = w.id_warning
-            WHERE d.id_discipline = ?
+            WHERE d.discipline_id = ?
         ");
         $stmt->execute([$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -68,8 +78,9 @@ class DisciplineModel {
             SET violation_name = ?, 
                 id_sanctions = ?, 
                 id_warning = ?, 
-                description = ?
-            WHERE id_discipline = ?
+                description = ?,
+                date_updated = NOW()
+            WHERE discipline_id = ?
         ");
         return $stmt->execute([
             $data['violation_name'], 
@@ -81,7 +92,7 @@ class DisciplineModel {
     }
     
     public function deleteDiscipline($id) {
-        $stmt = $this->db->prepare("DELETE FROM discipline WHERE id_discipline = ?");
+        $stmt = $this->db->prepare("DELETE FROM discipline WHERE discipline_id = ?");
         return $stmt->execute([$id]);
     }
     

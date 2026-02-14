@@ -1,351 +1,328 @@
 <?php
-// controllers/DisciplineController.php
+// ============================================
+// CRITICAL: CHECK FOR AJAX FIRST - BEFORE ANY OUTPUT
+// ============================================
+$isAjax = (
+    (isset($_POST['ajax_action']) || isset($_GET['ajax_action'])) &&
+    !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+    strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest'
+);
 
+// If AJAX request, start clean output buffer
+if ($isAjax) {
+    while (ob_get_level()) ob_end_clean();
+    ob_start();
+}
+
+// Check Admin Access
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
+    if ($isAjax) {
+        ob_end_clean();
+        header('Content-Type: application/json');
+        die(json_encode(['status' => 'error', 'message' => 'Unauthorized']));
+    }
+    header('Location: /student-discipline-and-incident-reporting-system/public');
+    exit;
+}
+
+// Load dependencies
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../models/discipline-model.php';
 
+// ============================================
+// CONTROLLER CLASS
+// ============================================
 class DisciplineController {
-    private $model;
+    private $disciplineModel;
+    private $perPage = 10;
     
-    public function __construct($db) {
-        $this->model = new DisciplineModel($db);
+    public function __construct($pdo) {
+        $this->disciplineModel = new DisciplineModel($pdo);
     }
     
-    private function checkAuth() {
-        if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-            header('Location: /student-discipline-and-incident-reporting-system/public');
-            exit;
-        }
-    }
-    
-    public function index() {
-        $this->checkAuth();
-        
-        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-        $perPage = 10;
-        
-        $sanctions = $this->model->getAllSanctions();
-        $warnings = $this->model->getAllWarnings();
-        $disciplines = $this->model->getDisciplineRecords($page, $perPage);
-        $totalRecords = $this->model->getTotalDisciplineRecords();
-        $totalPages = max(1, ceil($totalRecords / $perPage));
-        
-        include __DIR__ . '/../views/discipline.php';
-    }
-    
-    public function save() {
-        // Clear any output buffers
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
-        
+    private function sendJson($data) {
+        while (ob_get_level()) ob_end_clean();
         header('Content-Type: application/json');
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = $_POST['id_discipline'] ?? '';
+        die(json_encode($data));
+    }
+    
+    // ============================================
+    // SAVE/UPDATE
+    // ============================================
+    public function save() {
+        try {
             $data = [
                 'violation_name' => trim($_POST['violation_name'] ?? ''),
-                'id_sanctions'   => $_POST['id_sanctions'] ?? '',
-                'id_warning'     => $_POST['id_warning'] ?? '',
-                'description'    => trim($_POST['description'] ?? '')
+                'id_sanctions' => intval($_POST['id_sanctions'] ?? 0),
+                'id_warning' => intval($_POST['id_warning'] ?? 0),
+                'description' => trim($_POST['description'] ?? '')
             ];
             
-            // Validation
-            if (empty($data['violation_name']) || empty($data['id_sanctions']) || empty($data['id_warning'])) {
-                echo json_encode([
-                    'status' => 'error',
-                    'message' => 'All fields are required.'
-                ]);
-                exit();
+            if (empty($data['violation_name'])) {
+                $this->sendJson(['status' => 'error', 'message' => 'Violation name required']);
+            }
+            if ($data['id_sanctions'] <= 0) {
+                $this->sendJson(['status' => 'error', 'message' => 'Select a sanction']);
+            }
+            if ($data['id_warning'] <= 0) {
+                $this->sendJson(['status' => 'error', 'message' => 'Select severity level']);
             }
             
-            if ($id) {
-                // Update existing
-                $result = $this->model->updateDisciplineConfig($id, $data);
-                $message = 'Discipline record updated successfully!';
+            $id = isset($_POST['id_discipline']) ? intval($_POST['id_discipline']) : 0;
+            
+            if ($id > 0) {
+                $result = $this->disciplineModel->updateDisciplineConfig($id, $data);
+                $message = 'Record updated successfully!';
             } else {
-                // Add new
-                $result = $this->model->addDisciplineConfig($data);
-                $message = 'Discipline record added successfully!';
+                $result = $this->disciplineModel->addDisciplineConfig($data);
+                $message = 'Record added successfully!';
             }
             
-            if ($result) {
-                echo json_encode([
-                    'status' => 'success',
-                    'message' => $message
-                ]);
-            } else {
-                echo json_encode([
-                    'status' => 'error',
-                    'message' => 'Failed to save discipline record.'
-                ]);
-            }
+            $this->sendJson([
+                'status' => $result ? 'success' : 'error',
+                'message' => $result ? $message : 'Failed to save'
+            ]);
+        } catch (Exception $e) {
+            $this->sendJson(['status' => 'error', 'message' => $e->getMessage()]);
         }
-        exit();
     }
     
+    // ============================================
+    // GET PAGINATED DATA
+    // ============================================
     public function getData() {
-        // Clear any output buffers
-        while (ob_get_level()) {
-            ob_end_clean();
+        try {
+            // Accept page from either GET or POST
+            $page = isset($_POST['page']) ? intval($_POST['page']) : (isset($_GET['page']) ? intval($_GET['page']) : 1);
+            $page = max(1, $page);
+            
+            $disciplines = $this->disciplineModel->getDisciplineRecords($page, $this->perPage);
+            $totalRecords = $this->disciplineModel->getTotalDisciplineRecords();
+            $totalPages = max(1, ceil($totalRecords / $this->perPage));
+            
+            if ($page > $totalPages && $totalPages > 0) {
+                $page = $totalPages;
+                $disciplines = $this->disciplineModel->getDisciplineRecords($page, $this->perPage);
+            }
+            
+            $this->sendJson([
+                'status' => 'success',
+                'disciplines' => $disciplines,
+                'page' => $page,
+                'totalPages' => $totalPages,
+                'totalRecords' => $totalRecords
+            ]);
+        } catch (Exception $e) {
+            $this->sendJson(['status' => 'error', 'message' => $e->getMessage()]);
         }
+    }
+    
+    // ============================================
+    // DELETE
+    // ============================================
+    public function delete() {
+        try {
+            $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+            
+            if ($id <= 0) {
+                $this->sendJson(['status' => 'error', 'message' => 'Invalid ID']);
+            }
+            
+            $record = $this->disciplineModel->getDisciplineById($id);
+            if (!$record) {
+                $this->sendJson(['status' => 'error', 'message' => 'Record not found']);
+            }
+            
+            $result = $this->disciplineModel->deleteDiscipline($id);
+            
+            $this->sendJson([
+                'status' => $result ? 'success' : 'error',
+                'message' => $result ? 'Deleted successfully!' : 'Failed to delete'
+            ]);
+        } catch (Exception $e) {
+            $this->sendJson(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+    
+    // ============================================
+    // GET OPTIONS
+    // ============================================
+    public function getOptions() {
+        try {
+            // Accept type from POST or GET
+            $type = $_POST['type'] ?? $_GET['type'] ?? '';
+            
+            if ($type === 'sanction') {
+                $options = $this->disciplineModel->getAllSanctions();
+                $idField = 'id_sanctions';
+            } elseif ($type === 'severity') {
+                $options = $this->disciplineModel->getAllWarnings();
+                $idField = 'id_warning';
+            } else {
+                $this->sendJson(['status' => 'error', 'message' => 'Invalid type']);
+            }
+            
+            $formattedOptions = array_map(function($option) use ($idField) {
+                return ['id' => $option[$idField], 'name' => $option['name']];
+            }, $options);
+            
+            $this->sendJson(['status' => 'success', 'options' => $formattedOptions]);
+        } catch (Exception $e) {
+            $this->sendJson(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+    
+    // ============================================
+    // MANAGE OPTIONS
+    // ============================================
+    public function manageOptions() {
+        try {
+            $type = $_POST['type'] ?? '';
+            $action = $_POST['action'] ?? '';
+            
+            if (!in_array($type, ['sanction', 'severity'])) {
+                $this->sendJson(['status' => 'error', 'message' => 'Invalid type']);
+            }
+            
+            if ($action === 'add') {
+                $name = trim($_POST['name'] ?? '');
+                if (empty($name)) {
+                    $this->sendJson(['status' => 'error', 'message' => 'Name required']);
+                }
+                
+                $result = $type === 'sanction' 
+                    ? $this->disciplineModel->addNewSanction($name)
+                    : $this->disciplineModel->addNewWarning($name);
+                
+                $this->sendJson([
+                    'status' => $result ? 'success' : 'error',
+                    'message' => $result ? 'Added successfully!' : 'Failed to add'
+                ]);
+                
+            } elseif ($action === 'edit') {
+                $id = intval($_POST['id'] ?? 0);
+                $name = trim($_POST['name'] ?? '');
+                
+                if ($id <= 0) $this->sendJson(['status' => 'error', 'message' => 'Invalid ID']);
+                if (empty($name)) $this->sendJson(['status' => 'error', 'message' => 'Name required']);
+                
+                $result = $type === 'sanction' 
+                    ? $this->disciplineModel->updateSanction($id, $name)
+                    : $this->disciplineModel->updateWarning($id, $name);
+                
+                $this->sendJson([
+                    'status' => $result ? 'success' : 'error',
+                    'message' => $result ? 'Updated successfully!' : 'Failed to update'
+                ]);
+                
+            } elseif ($action === 'delete') {
+                $id = intval($_POST['id'] ?? 0);
+                if ($id <= 0) $this->sendJson(['status' => 'error', 'message' => 'Invalid ID']);
+                
+                $result = $type === 'sanction' 
+                    ? $this->disciplineModel->deleteSanction($id)
+                    : $this->disciplineModel->deleteWarning($id);
+                
+                if ($result === false) {
+                    $this->sendJson(['status' => 'error', 'message' => 'Cannot delete. Item is being used.']);
+                }
+                
+                $this->sendJson([
+                    'status' => $result ? 'success' : 'error',
+                    'message' => $result ? 'Deleted successfully!' : 'Failed to delete'
+                ]);
+            }
+            
+            $this->sendJson(['status' => 'error', 'message' => 'Invalid action']);
+        } catch (Exception $e) {
+            $this->sendJson(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+    
+    // ============================================
+    // GET DROPDOWNS
+    // ============================================
+    public function getDropdowns() {
+        try {
+            $sanctions = $this->disciplineModel->getAllSanctions();
+            $warnings = $this->disciplineModel->getAllWarnings();
+            
+            $this->sendJson([
+                'status' => 'success',
+                'sanctions' => $sanctions,
+                'warnings' => $warnings
+            ]);
+        } catch (Exception $e) {
+            $this->sendJson(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+    
+    // ============================================
+    // GET PAGE DATA (FOR INITIAL VIEW)
+    // ============================================
+    public function getPageData($page = 1) {
+        $page = max(1, intval($page));
         
-        header('Content-Type: application/json');
+        $disciplines = $this->disciplineModel->getDisciplineRecords($page, $this->perPage);
+        $totalRecords = $this->disciplineModel->getTotalDisciplineRecords();
+        $totalPages = max(1, ceil($totalRecords / $this->perPage));
         
-        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-        $perPage = 10;
-        
-        $disciplines = $this->model->getDisciplineRecords($page, $perPage);
-        $totalRecords = $this->model->getTotalDisciplineRecords();
-        $totalPages = max(1, ceil($totalRecords / $perPage));
-        
-        echo json_encode([
-            'status' => 'success',
+        return [
             'disciplines' => $disciplines,
             'page' => $page,
             'totalPages' => $totalPages,
-            'totalRecords' => $totalRecords
-        ]);
-        exit();
-    }
-    
-    public function getDiscipline() {
-        // Clear any output buffers
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
-        
-        header('Content-Type: application/json');
-        
-        $id = $_GET['id'] ?? '';
-        
-        if (empty($id)) {
-            echo json_encode(['status' => 'error', 'message' => 'ID is required']);
-            exit();
-        }
-        
-        $discipline = $this->model->getDisciplineById($id);
-        
-        if ($discipline) {
-            echo json_encode([
-                'status' => 'success',
-                'discipline' => $discipline
-            ]);
-        } else {
-            echo json_encode([
-                'status' => 'error',
-                'message' => 'Record not found'
-            ]);
-        }
-        exit();
-    }
-    
-    public function deleteDiscipline() {
-        // Clear any output buffers
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
-        
-        header('Content-Type: application/json');
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = $_POST['id'] ?? '';
-            
-            if (empty($id)) {
-                echo json_encode(['status' => 'error', 'message' => 'ID is required']);
-                exit();
-            }
-            
-            if ($this->model->deleteDiscipline($id)) {
-                echo json_encode([
-                    'status' => 'success',
-                    'message' => 'Deleted successfully'
-                ]);
-            } else {
-                echo json_encode([
-                    'status' => 'error',
-                    'message' => 'Failed to delete'
-                ]);
-            }
-        }
-        exit();
-    }
-    
-    public function getOptions() {
-        // Clear any output buffers
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
-        
-        header('Content-Type: application/json');
-        
-        $type = $_GET['type'] ?? '';
-        
-        if ($type === 'sanction') {
-            $options = $this->model->getAllSanctions();
-            $options = array_map(function($item) {
-                return ['id' => $item['id_sanctions'], 'name' => $item['name']];
-            }, $options);
-        } elseif ($type === 'severity') {
-            $options = $this->model->getAllWarnings();
-            $options = array_map(function($item) {
-                return ['id' => $item['id_warning'], 'name' => $item['name']];
-            }, $options);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Invalid type']);
-            exit();
-        }
-        
-        echo json_encode([
-            'status' => 'success',
-            'options' => $options
-        ]);
-        exit();
-    }
-    
-    public function getDropdowns() {
-        // Clear any output buffers
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
-        
-        header('Content-Type: application/json');
-        
-        echo json_encode([
-            'status' => 'success',
-            'sanctions' => $this->model->getAllSanctions(),
-            'warnings' => $this->model->getAllWarnings()
-        ]);
-        exit();
-    }
-    
-    public function manageOptions() {
-        // Clear any output buffers
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
-        
-        header('Content-Type: application/json');
-        
-        $type = $_POST['type'] ?? '';
-        $action = $_POST['action'] ?? '';
-        
-        if ($action === 'add') {
-            $name = trim($_POST['name'] ?? '');
-            
-            if (empty($name)) {
-                echo json_encode(['status' => 'error', 'message' => 'Name is required']);
-                exit();
-            }
-            
-            try {
-                if ($type === 'sanction') {
-                    $id = $this->model->addNewSanction($name);
-                    $item = $this->model->getSanctionById($id);
-                } elseif ($type === 'severity') {
-                    $id = $this->model->addNewWarning($name);
-                    $item = $this->model->getWarningById($id);
-                } else {
-                    echo json_encode(['status' => 'error', 'message' => 'Invalid type']);
-                    exit();
-                }
-                
-                echo json_encode([
-                    'status' => 'success', 
-                    'id' => $id, 
-                    'name' => $name,
-                    'data' => $item
-                ]);
-            } catch (Exception $e) {
-                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-            }
-            
-        } elseif ($action === 'edit') {
-            $id = $_POST['id'] ?? '';
-            $name = trim($_POST['name'] ?? '');
-            
-            if (empty($id) || empty($name)) {
-                echo json_encode(['status' => 'error', 'message' => 'ID and name are required']);
-                exit();
-            }
-            
-            try {
-                if ($type === 'sanction') {
-                    $result = $this->model->updateSanction($id, $name);
-                } elseif ($type === 'severity') {
-                    $result = $this->model->updateWarning($id, $name);
-                } else {
-                    echo json_encode(['status' => 'error', 'message' => 'Invalid type']);
-                    exit();
-                }
-                
-                if ($result) {
-                    echo json_encode(['status' => 'success']);
-                } else {
-                    echo json_encode(['status' => 'error', 'message' => 'Failed to update']);
-                }
-            } catch (Exception $e) {
-                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-            }
-            
-        } elseif ($action === 'delete') {
-            $id = $_POST['id'] ?? '';
-            
-            if (empty($id)) {
-                echo json_encode(['status' => 'error', 'message' => 'ID is required']);
-                exit();
-            }
-            
-            try {
-                if ($type === 'sanction') {
-                    $result = $this->model->deleteSanction($id);
-                } elseif ($type === 'severity') {
-                    $result = $this->model->deleteWarning($id);
-                } else {
-                    echo json_encode(['status' => 'error', 'message' => 'Invalid type']);
-                    exit();
-                }
-                
-                if ($result === false) {
-                    echo json_encode([
-                        'status' => 'error', 
-                        'message' => 'Cannot delete. This item is being used in discipline records.'
-                    ]);
-                } else {
-                    echo json_encode(['status' => 'success']);
-                }
-            } catch (Exception $e) {
-                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-            }
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Invalid action']);
-        }
-        
-        exit();
+            'totalRecords' => $totalRecords,
+            'sanctions' => $this->disciplineModel->getAllSanctions(),
+            'warnings' => $this->disciplineModel->getAllWarnings()
+        ];
     }
 }
 
-// Initialize controller
+// ============================================
+// INSTANTIATE CONTROLLER
+// ============================================
 $controller = new DisciplineController($pdo);
 
-// Route handling
-$action = $_GET['action'] ?? 'index';
-
-if ($action === 'save') {
-    $controller->save();
-} elseif ($action === 'get-data') {
-    $controller->getData();
-} elseif ($action === 'get-discipline') {
-    $controller->getDiscipline();
-} elseif ($action === 'delete-discipline') {
-    $controller->deleteDiscipline();
-} elseif ($action === 'manage-options') {
-    $controller->manageOptions();
-} elseif ($action === 'get-options') {
-    $controller->getOptions();
-} elseif ($action === 'get-dropdowns') {
-    $controller->getDropdowns();
-} else {
-    $controller->index();
+// ============================================
+// HANDLE AJAX REQUESTS
+// ============================================
+if ($isAjax) {
+    $action = $_POST['ajax_action'] ?? $_GET['ajax_action'] ?? '';
+    
+    switch ($action) {
+        case 'save':
+            $controller->save();
+            break;
+        case 'delete':
+            $controller->delete();
+            break;
+        case 'get-data':
+            $controller->getData();
+            break;
+        case 'get-options':
+            $controller->getOptions();
+            break;
+        case 'manage-options':
+            $controller->manageOptions();
+            break;
+        case 'get-dropdowns':
+            $controller->getDropdowns();
+            break;
+        default:
+            while (ob_get_level()) ob_end_clean();
+            header('Content-Type: application/json');
+            die(json_encode(['status' => 'error', 'message' => 'Invalid action']));
+    }
+    // Should never reach here
+    exit;
 }
+
+// ============================================
+// NORMAL PAGE LOAD
+// ============================================
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$data = $controller->getPageData($page);
+extract($data);
+
+require_once __DIR__ . '/../views/discipline.php';
 ?>
