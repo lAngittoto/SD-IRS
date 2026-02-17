@@ -634,6 +634,9 @@ function displaySubjectTeachersList(teachers) {
     const tbody = document.getElementById('tableBody');
     const resultCount = document.getElementById('resultCount');
     
+    // Always show "Showing Results"
+    resultCount.textContent = 'Showing Results';
+    
     if (teachers.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -646,7 +649,6 @@ function displaySubjectTeachersList(teachers) {
                 </td>
             </tr>
         `;
-        resultCount.textContent = 'Showing 0 Results';
         renderPagination(0);
         return;
     }
@@ -674,11 +676,6 @@ function displaySubjectTeachersList(teachers) {
     });
     
     tbody.innerHTML = html;
-    
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE + 1;
-    const endIndex = Math.min(currentPage * ITEMS_PER_PAGE, teachers.length);
-    resultCount.textContent = `Showing ${startIndex}-${endIndex} of ${teachers.length} Subject Teacher${teachers.length !== 1 ? 's' : ''}`;
-    
     renderPagination(teachers.length);
 }
 
@@ -703,7 +700,7 @@ function resetFilters() {
             </td>
         </tr>
     `;
-    document.getElementById('resultCount').textContent = 'Showing 0 Results';
+    document.getElementById('resultCount').textContent = 'Showing Results';
     renderPagination(0);
 }
 
@@ -761,6 +758,9 @@ function displayAdvisoryList(advisories) {
     const tbody = document.getElementById('tableBody');
     const resultCount = document.getElementById('resultCount');
     
+    // Always show "Showing Results"
+    resultCount.textContent = 'Showing Results';
+    
     if (advisories.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -773,7 +773,6 @@ function displayAdvisoryList(advisories) {
                 </td>
             </tr>
         `;
-        resultCount.textContent = 'Showing 0 Results';
         renderPagination(0);
         return;
     }
@@ -829,11 +828,6 @@ function displayAdvisoryList(advisories) {
     });
     
     tbody.innerHTML = html;
-    
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE + 1;
-    const endIndex = Math.min(currentPage * ITEMS_PER_PAGE, advisories.length);
-    resultCount.textContent = `Showing ${startIndex}-${endIndex} of ${advisories.length} Advisory Class${advisories.length !== 1 ? 'es' : ''}`;
-    
     renderPagination(advisories.length);
 }
 
@@ -1198,6 +1192,9 @@ function displayTableData(data) {
     const tbody = document.getElementById('tableBody');
     const resultCount = document.getElementById('resultCount');
     
+    // Always show "Showing Results"
+    resultCount.textContent = 'Showing Results';
+    
     if (data.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -1210,7 +1207,6 @@ function displayTableData(data) {
                 </td>
             </tr>
         `;
-        resultCount.textContent = 'Showing 0 Results';
         renderPagination(0);
         return;
     }
@@ -1266,11 +1262,6 @@ function displayTableData(data) {
     });
     
     tbody.innerHTML = html;
-    
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE + 1;
-    const endIndex = Math.min(currentPage * ITEMS_PER_PAGE, data.length);
-    resultCount.textContent = `Showing ${startIndex}-${endIndex} of ${data.length} Result${data.length !== 1 ? 's' : ''}`;
-    
     renderPagination(data.length);
 }
 
@@ -1290,9 +1281,6 @@ function formatDate(dateString) {
         minute: '2-digit'
     });
 }
-
-// REMOVED: window.onclick - No more click-outside-to-close functionality
-// Users MUST use the Cancel button to close modals
 
 document.addEventListener('DOMContentLoaded', function() {
     checkAdvisoryAvailability();

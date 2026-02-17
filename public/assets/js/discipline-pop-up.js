@@ -1,5 +1,4 @@
-
-    function openPopup(id) {
+function openPopup(id) {
         const popup = document.getElementById(id);
         popup.classList.remove('hidden');
         popup.classList.add('flex');
@@ -141,14 +140,6 @@ function loadPage(page) {
             currentPage = parseInt(data.page);
             totalPages = parseInt(data.totalPages);
             totalRecords = parseInt(data.totalRecords);
-            
-            const currentPageEl = document.getElementById('current-page');
-            const totalPagesEl = document.getElementById('total-pages');
-            const totalRecordsEl = document.getElementById('total-records');
-            
-            if (currentPageEl) currentPageEl.textContent = currentPage;
-            if (totalPagesEl) totalPagesEl.textContent = totalPages;
-            if (totalRecordsEl) totalRecordsEl.textContent = totalRecords;
             
             renderPagination();
         } else {

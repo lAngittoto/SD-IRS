@@ -155,7 +155,7 @@ $allStudents = $advisoriesController->getAllStudents();
 
             <!-- Pagination Section -->
             <div class="flex flex-col sm:flex-row justify-between items-center mt-6 px-2 gap-4">
-                <p id="resultCount" class="text-[11px] text-gray-400 uppercase font-bold tracking-widest">Showing 0 Results</p>
+                <p id="resultCount" class="text-[11px] text-gray-400 uppercase font-bold tracking-widest">Showing Results</p>
 
                 <div id="paginationContainer" class="flex items-center gap-2">
                     <!-- Pagination buttons will be generated here -->

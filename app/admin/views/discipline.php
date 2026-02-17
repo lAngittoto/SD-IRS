@@ -154,10 +154,8 @@
 
         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
             <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-                <div class="text-sm text-gray-600">
-                    Showing page <span class="font-bold text-[#043915]" id="current-page"><?= $page ?></span> of 
-                    <span class="font-bold text-[#043915]" id="total-pages"><?= $totalPages ?></span> 
-                    (<span class="font-bold text-[#043915]" id="total-records"><?= $totalRecords ?></span> total records)
+                <div class="text-sm text-gray-600 font-semibold">
+                    Showing Results
                 </div>
                 <div id="pagination-buttons" class="flex items-center gap-2"></div>
             </div>
