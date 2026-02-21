@@ -1,6 +1,6 @@
 <?php
-function getUser($pdo, $username) {
-    $stmt = $pdo->prepare('SELECT * FROM users WHERE username = ?');
-    $stmt->execute([$username]);
+function getUser($pdo, $usernamename) {
+    $stmt = $pdo->prepare('SELECT * FROM user_management WHERE name = ?');
+    $stmt->execute([$usernamename]);
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }

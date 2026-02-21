@@ -1,4 +1,9 @@
 <?php
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
+    header('Location: /student-discipline-and-incident-reporting-system/public');
+    exit;
+}
+
 // ============================================
 // CRITICAL: CHECK FOR AJAX FIRST - BEFORE ANY OUTPUT
 // ============================================
@@ -14,16 +19,7 @@ if ($isAjax) {
     ob_start();
 }
 
-// Check Admin Access
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-    if ($isAjax) {
-        ob_end_clean();
-        header('Content-Type: application/json');
-        die(json_encode(['status' => 'error', 'message' => 'Unauthorized']));
-    }
-    header('Location: /student-discipline-and-incident-reporting-system/public');
-    exit;
-}
+
 
 // Load dependencies
 require_once __DIR__ . '/../../../config/database.php';

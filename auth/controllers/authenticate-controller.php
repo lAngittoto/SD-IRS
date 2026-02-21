@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user['role'] === 'admin') {
             header('Location: /student-discipline-and-incident-reporting-system/public/admin-dashboard');
         } else {
-            header('Location: /LuneraHotel/App/Public/rooms');
+       
         }
         exit;
     } else {

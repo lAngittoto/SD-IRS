@@ -13,7 +13,7 @@ $roleFilter = isset($_GET['role']) ? $_GET['role'] : '';
 $sortFilter = isset($_GET['sort']) ? $_GET['sort'] : 'latest'; 
 $searchFilter = isset($_GET['search']) ? $_GET['search'] : '';
 
-$limit = 7;
+$limit = 100;
 
 // 3. Kunin ang Total Users base sa filters para tama ang bilang ng pages
 // Dapat ang getTotalUsers mo ay tumatanggap na ng ($role, $search)

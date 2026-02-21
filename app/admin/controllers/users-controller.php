@@ -1,18 +1,16 @@
 <?php
-// 1. I-check ang Admin Access (STAYS AT THE TOP)
+// 1. Check Admin Access
 if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
     header('Location: /student-discipline-and-incident-reporting-system/public');
     exit;
 }
 
 // 2. Load dependencies
-require_once __DIR__ . '/../../../config/database.php'; 
+require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../models/users-model.php';
 
 /**
- * 3. DEFINE THE CLASS
- * We define this BEFORE we call "new UserController" so Intelephense 
- * and PHP know exactly what it is.
+ * 3. UserController Class
  */
 class UserController {
     private $userModel;
@@ -47,8 +45,7 @@ class UserController {
 }
 
 /**
- * 4. INSTANTIATE AND RUN
- * Now that the class is defined above, this "new" call will not throw an error.
+ * 4. Instantiate and Run
  */
 $userController = new UserController($pdo);
 
@@ -57,5 +54,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['name'])) {
     $userController->createUser();
 }
 
-// 5. Load the View logic and UI
+// 5. Load the View
 require_once __DIR__ . '/../views/users.php';
