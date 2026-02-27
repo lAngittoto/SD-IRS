@@ -1,11 +1,9 @@
 <?php
-// 1. Check Admin Access
 if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
     header('Location: /student-discipline-and-incident-reporting-system/public');
     exit;
 }
 
-// 2. Load dependencies
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../models/advisories-model.php';
 
@@ -20,10 +18,6 @@ class AdvisoriesController {
         }
     }
     
-    // ============================================
-    // PROFILE PICTURE UPLOAD
-    // ============================================
-    
     public function uploadProfilePicture() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['profile_pic'])) {
             $file = $_FILES['profile_pic'];
@@ -34,9 +28,8 @@ class AdvisoriesController {
                 exit;
             }
             
-            // Validate file
             $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-            $maxSize = 5 * 1024 * 1024; // 5MB
+            $maxSize = 5 * 1024 * 1024;
             
             if ($file['error'] !== UPLOAD_ERR_OK) {
                 echo json_encode(['success' => false, 'message' => 'File upload error.']);
@@ -44,29 +37,27 @@ class AdvisoriesController {
             }
             
             if (!in_array($file['type'], $allowedTypes)) {
-                echo json_encode(['success' => false, 'message' => 'Only JPG, PNG, and WebP images are allowed.']);
+                echo json_encode(['success' => false, 'message' => 'Only JPG, PNG, WebP allowed.']);
                 exit;
             }
             
             if ($file['size'] > $maxSize) {
-                echo json_encode(['success' => false, 'message' => 'File size exceeds 5MB limit.']);
+                echo json_encode(['success' => false, 'message' => 'File too large.']);
                 exit;
             }
             
             try {
-                // Generate unique filename
                 $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
                 $filename = 'student_' . $studentId . '_' . time() . '.' . $ext;
                 $filepath = $this->uploadDir . $filename;
                 $relativePath = '/student-discipline-and-incident-reporting-system/public/storage/photos/' . $filename;
                 
-                // Move uploaded file
                 if (!move_uploaded_file($file['tmp_name'], $filepath)) {
-                    echo json_encode(['success' => false, 'message' => 'Failed to save file.']);
+                    echo json_encode(['success' => false, 'message' => 'Save failed.']);
                     exit;
                 }
                 
-                echo json_encode(['success' => true, 'path' => $relativePath, 'filename' => $filename]);
+                echo json_encode(['success' => true, 'path' => $relativePath]);
                 exit;
             } catch (Exception $e) {
                 echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
@@ -74,10 +65,54 @@ class AdvisoriesController {
             }
         }
     }
-    
-    // ============================================
-    // TEACHER ASSIGNMENT METHODS
-    // ============================================
+
+    public function uploadTeacherProfilePicture() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['profile_pic'])) {
+            $file = $_FILES['profile_pic'];
+            $teacherId = intval($_POST['teacher_id'] ?? 0);
+            
+            if ($teacherId <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid teacher ID.']);
+                exit;
+            }
+            
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            $maxSize = 5 * 1024 * 1024;
+            
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                echo json_encode(['success' => false, 'message' => 'File upload error.']);
+                exit;
+            }
+            
+            if (!in_array($file['type'], $allowedTypes)) {
+                echo json_encode(['success' => false, 'message' => 'Only JPG, PNG, WebP allowed.']);
+                exit;
+            }
+            
+            if ($file['size'] > $maxSize) {
+                echo json_encode(['success' => false, 'message' => 'File too large.']);
+                exit;
+            }
+            
+            try {
+                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $filename = 'teacher_' . $teacherId . '_' . time() . '.' . $ext;
+                $filepath = $this->uploadDir . $filename;
+                $relativePath = '/student-discipline-and-incident-reporting-system/public/storage/photos/' . $filename;
+                
+                if (!move_uploaded_file($file['tmp_name'], $filepath)) {
+                    echo json_encode(['success' => false, 'message' => 'Save failed.']);
+                    exit;
+                }
+                
+                echo json_encode(['success' => true, 'path' => $relativePath]);
+                exit;
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+                exit;
+            }
+        }
+    }
     
     public function assignAdvisoryTeacher() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -89,22 +124,22 @@ class AdvisoriesController {
             ];
             
             if (empty($data['teacher_id']) || $data['teacher_id'] <= 0) {
-                echo json_encode(['success' => false, 'message' => 'Please select a valid teacher.']);
+                echo json_encode(['success' => false, 'message' => 'Select a teacher.']);
                 exit;
             }
             
             if (empty($data['role_type']) || !in_array($data['role_type'], ['subject', 'advisory'])) {
-                echo json_encode(['success' => false, 'message' => 'Please select a valid role type.']);
+                echo json_encode(['success' => false, 'message' => 'Select a role.']);
                 exit;
             }
             
             if ($data['role_type'] === 'advisory') {
                 if (empty($data['advisory_name'])) {
-                    echo json_encode(['success' => false, 'message' => 'Advisory class name is required.']);
+                    echo json_encode(['success' => false, 'message' => 'Class name required.']);
                     exit;
                 }
                 if (empty($data['grade_level']) || !in_array($data['grade_level'], ['7', '8', '9', '10'])) {
-                    echo json_encode(['success' => false, 'message' => 'Please select a valid grade level (7-10).']);
+                    echo json_encode(['success' => false, 'message' => 'Select grade 7-10.']);
                     exit;
                 }
             }
@@ -120,7 +155,7 @@ class AdvisoriesController {
             $advisory_id = intval($_POST['advisory_id'] ?? 0);
             
             if ($advisory_id <= 0) {
-                echo json_encode(['success' => false, 'message' => 'Invalid advisory ID.']);
+                echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
                 exit;
             }
             
@@ -130,10 +165,6 @@ class AdvisoriesController {
         }
     }
     
-    // ============================================
-    // STUDENT ASSIGNMENT METHODS
-    // ============================================
-    
     public function assignStudentsToAdvisory() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $advisory_id = intval($_POST['advisory_id'] ?? 0);
@@ -141,18 +172,18 @@ class AdvisoriesController {
             $grade_levels = $_POST['grade_levels'] ?? [];
             
             if ($advisory_id <= 0) {
-                echo json_encode(['success' => false, 'message' => 'Please select an advisory teacher.']);
+                echo json_encode(['success' => false, 'message' => 'Select advisory.']);
                 exit;
             }
             
             if (empty($student_ids) || !is_array($student_ids)) {
-                echo json_encode(['success' => false, 'message' => 'Please select at least one student.']);
+                echo json_encode(['success' => false, 'message' => 'Select students.']);
                 exit;
             }
             
             $advisoryInfo = $this->advisoriesModel->getAdvisoryById($advisory_id);
             if (!$advisoryInfo) {
-                echo json_encode(['success' => false, 'message' => 'Advisory class not found.']);
+                echo json_encode(['success' => false, 'message' => 'Advisory not found.']);
                 exit;
             }
             
@@ -160,10 +191,7 @@ class AdvisoriesController {
             foreach ($student_ids as $student_id) {
                 $studentGrade = $grade_levels[$student_id] ?? '';
                 if ($studentGrade !== $advisoryGrade) {
-                    echo json_encode([
-                        'success' => false, 
-                        'message' => "Cannot assign students. This advisory class only accepts Grade {$advisoryGrade} students. Please select students of the correct grade level."
-                    ]);
+                    echo json_encode(['success' => false, 'message' => "Advisory only accepts Grade {$advisoryGrade}."]);
                     exit;
                 }
             }
@@ -181,21 +209,12 @@ class AdvisoriesController {
             $current_grade = $_POST['current_grade'] ?? '';
             
             if ($assignment_id <= 0 || $new_advisory_id <= 0) {
-                echo json_encode(['success' => false, 'message' => 'Invalid data provided.']);
+                echo json_encode(['success' => false, 'message' => 'Invalid data.']);
                 exit;
             }
             
             if (!in_array($current_grade, ['7', '8', '9', '10'])) {
-                echo json_encode(['success' => false, 'message' => 'Invalid grade level.']);
-                exit;
-            }
-            
-            $advisoryInfo = $this->advisoriesModel->getAdvisoryById($new_advisory_id);
-            if ($advisoryInfo && $advisoryInfo['grade_level'] !== $current_grade) {
-                echo json_encode([
-                    'success' => false, 
-                    'message' => "Cannot reassign. Student is Grade {$current_grade} but selected advisory is for Grade {$advisoryInfo['grade_level']}."
-                ]);
+                echo json_encode(['success' => false, 'message' => 'Invalid grade.']);
                 exit;
             }
             
@@ -210,7 +229,7 @@ class AdvisoriesController {
             $assignment_id = intval($_POST['assignment_id'] ?? 0);
             
             if ($assignment_id <= 0) {
-                echo json_encode(['success' => false, 'message' => 'Invalid assignment ID.']);
+                echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
                 exit;
             }
             
@@ -226,12 +245,12 @@ class AdvisoriesController {
             $new_grade = trim($_POST['new_grade'] ?? '');
             
             if ($assignment_id <= 0) {
-                echo json_encode(['success' => false, 'message' => 'Invalid assignment ID.']);
+                echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
                 exit;
             }
             
             if (!in_array($new_grade, ['7', '8', '9', '10'])) {
-                echo json_encode(['success' => false, 'message' => 'Invalid grade level.']);
+                echo json_encode(['success' => false, 'message' => 'Invalid grade.']);
                 exit;
             }
             
@@ -247,22 +266,20 @@ class AdvisoriesController {
             $new_grade = trim($_POST['new_grade'] ?? '');
             
             if (empty($assignment_ids) || !is_array($assignment_ids)) {
-                echo json_encode(['success' => false, 'message' => 'Please select at least one student.']);
+                echo json_encode(['success' => false, 'message' => 'Select students.']);
                 exit;
             }
             
             if (!in_array($new_grade, ['7', '8', '9', '10'])) {
-                echo json_encode(['success' => false, 'message' => 'Invalid grade level selected.']);
+                echo json_encode(['success' => false, 'message' => 'Invalid grade.']);
                 exit;
             }
             
             $assignment_ids = array_map('intval', $assignment_ids);
-            $assignment_ids = array_filter($assignment_ids, function($id) {
-                return $id > 0;
-            });
+            $assignment_ids = array_filter($assignment_ids, function($id) { return $id > 0; });
             
             if (empty($assignment_ids)) {
-                echo json_encode(['success' => false, 'message' => 'Invalid student selection.']);
+                echo json_encode(['success' => false, 'message' => 'Invalid.']);
                 exit;
             }
             
@@ -272,22 +289,18 @@ class AdvisoriesController {
         }
     }
 
-    // ============================================
-    // STUDENT PROFILE
-    // ============================================
-
     public function getStudentProfile() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $student_id = intval($_POST['student_id'] ?? 0);
 
             if ($student_id <= 0) {
-                echo json_encode(['success' => false, 'message' => 'Invalid student ID.']);
+                echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
                 exit;
             }
 
             $profile = $this->advisoriesModel->getStudentProfile($student_id);
             if (!$profile) {
-                echo json_encode(['success' => false, 'message' => 'Student not found.']);
+                echo json_encode(['success' => false, 'message' => 'Not found.']);
                 exit;
             }
 
@@ -301,7 +314,7 @@ class AdvisoriesController {
             $student_id = intval($_POST['student_id'] ?? 0);
 
             if ($student_id <= 0) {
-                echo json_encode(['success' => false, 'message' => 'Invalid student ID.']);
+                echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
                 exit;
             }
 
@@ -327,12 +340,12 @@ class AdvisoriesController {
             $new_grade  = trim($_POST['new_grade'] ?? '');
 
             if ($student_id <= 0) {
-                echo json_encode(['success' => false, 'message' => 'Invalid student ID.']);
+                echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
                 exit;
             }
 
             if (!in_array($new_grade, ['7','8','9','10','11','12'])) {
-                echo json_encode(['success' => false, 'message' => 'Invalid grade level.']);
+                echo json_encode(['success' => false, 'message' => 'Invalid grade.']);
                 exit;
             }
 
@@ -341,10 +354,55 @@ class AdvisoriesController {
             exit;
         }
     }
-    
-    // ============================================
-    // DATA RETRIEVAL METHODS
-    // ============================================
+
+    public function getTeacherProfile() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $advisory_id = intval($_POST['advisory_id'] ?? 0);
+            
+            error_log("getTeacherProfile called with advisory_id: " . $advisory_id);
+
+            if ($advisory_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
+                exit;
+            }
+
+            $profile = $this->advisoriesModel->getTeacherProfile($advisory_id);
+            
+            if (!$profile) {
+                error_log("No teacher profile found for advisory_id: " . $advisory_id);
+                echo json_encode(['success' => false, 'message' => 'Teacher not found.']);
+                exit;
+            }
+
+            echo json_encode(['success' => true, 'data' => $profile]);
+            exit;
+        }
+    }
+
+    public function updateTeacherInfo() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $teacher_id = intval($_POST['teacher_id'] ?? 0);
+
+            if ($teacher_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
+                exit;
+            }
+
+            $data = [
+                'teacher_id_field' => trim($_POST['teacher_id_field'] ?? ''),
+                'name'             => trim($_POST['name'] ?? ''),
+                'email'            => trim($_POST['email'] ?? ''),
+                'contact_no'       => trim($_POST['contact_no'] ?? ''),
+                'department'       => trim($_POST['department'] ?? ''),
+                'specialization'   => trim($_POST['specialization'] ?? ''),
+                'profile_pix'      => trim($_POST['profile_pix'] ?? ''),
+            ];
+
+            $result = $this->advisoriesModel->updateTeacherInfo($teacher_id, $data);
+            echo json_encode($result);
+            exit;
+        }
+    }
     
     public function getAllTeachers() {
         return $this->advisoriesModel->getAllTeachers();
@@ -377,10 +435,6 @@ class AdvisoriesController {
         return $this->advisoriesModel->getStudentsByAdvisory($advisory_id);
     }
     
-    // ============================================
-    // AJAX HANDLERS
-    // ============================================
-    
     public function handleAjaxRequest() {
         header('Content-Type: application/json');
         
@@ -388,22 +442,13 @@ class AdvisoriesController {
         
         switch ($action) {
             case 'get_filtered_data':
-                $filters = [
-                    'teacher_role' => $_POST['teacher_role'] ?? '',
-                    'grade_level' => $_POST['grade_level'] ?? '',
-                    'date_filter' => $_POST['date_filter'] ?? '',
-                    'search' => $_POST['search'] ?? '',
-                    'sort_by' => $_POST['sort_by'] ?? 'student_name',
-                    'sort_order' => $_POST['sort_order'] ?? 'ASC'
-                ];
+                $filters = ['teacher_role' => $_POST['teacher_role'] ?? '', 'grade_level' => $_POST['grade_level'] ?? '', 'date_filter' => $_POST['date_filter'] ?? '', 'search' => $_POST['search'] ?? '', 'sort_by' => $_POST['sort_by'] ?? 'student_name', 'sort_order' => $_POST['sort_order'] ?? 'ASC'];
                 $data = $this->getAssignedStudents($filters);
                 echo json_encode(['success' => true, 'data' => $data]);
                 break;
                 
             case 'get_unassigned_students':
-                $advisory_id = $_POST['advisory_id'] ?? 0;
-                $grade_level = $_POST['grade_level'] ?? '';
-                $students = $this->advisoriesModel->getUnassignedStudents($advisory_id, $grade_level);
+                $students = $this->advisoriesModel->getUnassignedStudents();
                 echo json_encode(['success' => true, 'data' => $students]);
                 break;
                 
@@ -418,27 +463,38 @@ class AdvisoriesController {
                 break;
                 
             case 'get_advisory_list':
-                $sort_by = $_POST['sort_by'] ?? 'advisory_name';
-                $sort_order = $_POST['sort_order'] ?? 'ASC';
-                $advisories = $this->advisoriesModel->getAdvisoryList($sort_by, $sort_order);
+                $advisories = $this->advisoriesModel->getAdvisoryList($_POST['sort_by'] ?? 'advisory_name', $_POST['sort_order'] ?? 'ASC');
                 echo json_encode(['success' => true, 'data' => $advisories]);
                 break;
                 
             case 'get_advisory_students':
-                $advisory_id = $_POST['advisory_id'] ?? 0;
-                $students = $this->getStudentsByAdvisory($advisory_id);
+                $students = $this->getStudentsByAdvisory($_POST['advisory_id'] ?? 0);
                 echo json_encode(['success' => true, 'data' => $students]);
                 break;
 
             case 'get_student_profile':
                 $student_id = intval($_POST['student_id'] ?? 0);
                 if ($student_id <= 0) {
-                    echo json_encode(['success' => false, 'message' => 'Invalid student ID.']);
+                    echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
                     break;
                 }
                 $profile = $this->advisoriesModel->getStudentProfile($student_id);
                 if (!$profile) {
-                    echo json_encode(['success' => false, 'message' => 'Student not found.']);
+                    echo json_encode(['success' => false, 'message' => 'Not found.']);
+                    break;
+                }
+                echo json_encode(['success' => true, 'data' => $profile]);
+                break;
+
+            case 'get_teacher_profile':
+                $advisory_id = intval($_POST['advisory_id'] ?? 0);
+                if ($advisory_id <= 0) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
+                    break;
+                }
+                $profile = $this->advisoriesModel->getTeacherProfile($advisory_id);
+                if (!$profile) {
+                    echo json_encode(['success' => false, 'message' => 'Not found.']);
                     break;
                 }
                 echo json_encode(['success' => true, 'data' => $profile]);
@@ -447,7 +503,7 @@ class AdvisoriesController {
             case 'update_student_info':
                 $student_id = intval($_POST['student_id'] ?? 0);
                 if ($student_id <= 0) {
-                    echo json_encode(['success' => false, 'message' => 'Invalid student ID.']);
+                    echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
                     break;
                 }
                 $data = [
@@ -463,15 +519,34 @@ class AdvisoriesController {
                 echo json_encode($result);
                 break;
 
+            case 'update_teacher_info':
+                $teacher_id = intval($_POST['teacher_id'] ?? 0);
+                if ($teacher_id <= 0) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
+                    break;
+                }
+                $data = [
+                    'teacher_id_field' => trim($_POST['teacher_id_field'] ?? ''),
+                    'name'             => trim($_POST['name'] ?? ''),
+                    'email'            => trim($_POST['email'] ?? ''),
+                    'contact_no'       => trim($_POST['contact_no'] ?? ''),
+                    'department'       => trim($_POST['department'] ?? ''),
+                    'specialization'   => trim($_POST['specialization'] ?? ''),
+                    'profile_pix'      => trim($_POST['profile_pix'] ?? ''),
+                ];
+                $result = $this->advisoriesModel->updateTeacherInfo($teacher_id, $data);
+                echo json_encode($result);
+                break;
+
             case 'update_student_grade_by_id':
                 $student_id = intval($_POST['student_id'] ?? 0);
                 $new_grade  = trim($_POST['new_grade'] ?? '');
                 if ($student_id <= 0) {
-                    echo json_encode(['success' => false, 'message' => 'Invalid student ID.']);
+                    echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
                     break;
                 }
                 if (!in_array($new_grade, ['7','8','9','10','11','12'])) {
-                    echo json_encode(['success' => false, 'message' => 'Invalid grade level.']);
+                    echo json_encode(['success' => false, 'message' => 'Invalid grade.']);
                     break;
                 }
                 $result = $this->advisoriesModel->updateStudentGradeByStudentId($student_id, $new_grade);
@@ -480,6 +555,10 @@ class AdvisoriesController {
                 
             case 'upload_profile_pic':
                 $this->uploadProfilePicture();
+                break;
+
+            case 'upload_teacher_profile_pic':
+                $this->uploadTeacherProfilePicture();
                 break;
                 
             default:
@@ -490,10 +569,8 @@ class AdvisoriesController {
     }
 }
 
-// 3. Instantiate the controller
 $advisoriesController = new AdvisoriesController($pdo);
 
-// 4. Handle POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
@@ -531,7 +608,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'get_student_profile':
+        case 'get_teacher_profile':
         case 'update_student_info':
+        case 'update_teacher_info':
         case 'get_filtered_data':
         case 'get_unassigned_students':
         case 'get_advisory_teachers':
@@ -539,16 +618,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'get_advisory_list':
         case 'get_advisory_students':
         case 'upload_profile_pic':
+        case 'upload_teacher_profile_pic':
             $advisoriesController->handleAjaxRequest();
             break;
     }
 }
 
-// 5. Handle AJAX GET requests
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ajax'])) {
     $advisoriesController->handleAjaxRequest();
 }
 
-// 6. Load the View
 require_once __DIR__ . '/../views/advisories.php';
 ?>
