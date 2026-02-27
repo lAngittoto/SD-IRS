@@ -95,8 +95,7 @@ ob_start();
                             <tr class="bg-[#043915]">
                                 <th class="px-6 py-5 text-center text-white text-xs font-bold uppercase tracking-widest rounded-tl-2xl">Name</th>
                                 <th class="px-6 py-5 text-center text-white text-xs font-bold uppercase tracking-widest">Email / LRN</th>
-                                <th class="px-6 py-5 text-center text-white text-xs font-bold uppercase tracking-widest">Role</th>
-                                <th class="px-6 py-5 text-center text-white text-xs font-bold uppercase tracking-widest rounded-tr-2xl">Actions</th>
+                                <th class="px-6 py-5 text-center text-white text-xs font-bold uppercase tracking-widest rounded-tr-2xl">Role</th>
                             </tr>
                         </thead>
 
@@ -148,20 +147,11 @@ ob_start();
                                             </span>
                                         </td>
 
-                                        <td class="px-4 py-5 md:px-6 text-center">
-                                            <button
-                                                onclick="openProfileModal(<?php echo htmlspecialchars(json_encode($user), ENT_QUOTES, 'UTF-8'); ?>)"
-                                                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#043915] hover:bg-green-800 text-white text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shadow-sm">
-                                                <i class="fa-solid fa-user text-[11px]"></i>
-                                                View Profile
-                                            </button>
-                                        </td>
-
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="4" class="text-center py-32 text-gray-300 text-base italic">No users found.</td>
+                                    <td colspan="3" class="text-center py-32 text-gray-300 text-base italic">No users found.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
@@ -224,7 +214,7 @@ ob_start();
 
                 <div>
                     <label class="block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">Access Role</label>
-                    <select id="modalRole" name="role" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#043915] text-sm bg-gray-50/50">
+                    <select id="modalRole" name="role" onchange="handleRoleSwitch()" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#043915] text-sm bg-gray-50/50">
                         <option value="Student">Student</option>
                         <option value="Teacher">Teacher</option>
                         <option value="Admin">Admin</option>
@@ -256,132 +246,164 @@ ob_start();
     </div>
 </div>
 
-
-<!-- PROFILE MODAL -->
-<div id="profileModal" class="fixed inset-0 z-999 hidden">
-    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeModal('profileModal')"></div>
-
-    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm p-4">
-        <div class="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-
-            <!-- Modal Header -->
-            <div class="bg-[#043915] p-6 text-white relative">
-                <button onclick="closeModal('profileModal')"
-                        class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-all cursor-pointer">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-                <div class="flex items-center gap-4">
-                    <div id="profileAvatar"
-                         class="w-16 h-16 rounded-full flex items-center justify-center font-black text-xl shadow-lg border-2 border-white/30">
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-green-300 uppercase tracking-widest font-bold mb-1">User Profile</p>
-                        <h3 id="profileName" class="text-xl font-bold leading-tight"></h3>
-                        <span id="profileRoleBadge" class="mt-1 inline-block px-3 py-0.5 text-xs font-black rounded-full uppercase tracking-widest"></span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal Body -->
-            <div class="p-6 space-y-3">
-
-                <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <div class="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-id-card text-blue-400 text-sm"></i>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">LRN / Email</p>
-                        <p id="profileIdentifier" class="text-base font-semibold text-gray-700 font-mono mt-0.5"></p>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <div class="w-9 h-9 bg-purple-50 rounded-lg flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-user-tag text-purple-400 text-sm"></i>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Access Role</p>
-                        <p id="profileRole" class="text-base font-semibold text-gray-700 mt-0.5"></p>
-                    </div>
-                </div>
-
-                <div id="profileEmailRow" class="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <div class="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-envelope text-emerald-400 text-sm"></i>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Address</p>
-                        <p id="profileEmail" class="text-base font-semibold text-gray-700 mt-0.5"></p>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="px-6 pb-6">
-                <button onclick="closeModal('profileModal')"
-                        class="w-full py-3 border border-gray-200 text-gray-500 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-50 transition-all cursor-pointer">
-                    Close
-                </button>
-            </div>
-
-        </div>
-    </div>
-</div>
-
-
-<script src="/student-discipline-and-incident-reporting-system/public/assets/js/user-helper.js"></script>
-
 <script>
-function openProfileModal(user) {
-    const isStudent = user.role === 'Student';
-    const isAdmin   = user.role === 'Admin';
+// ==========================================
+// MODAL FUNCTIONS
+// ==========================================
 
-    // Generate initials
-    const nameParts = user.name.trim().split(' ');
-    const initials = (nameParts[0][0] + (nameParts.length > 1 ? nameParts[nameParts.length - 1][0] : '')).toUpperCase();
-
-    // Identifier
-    const identifier = isStudent ? (user.lrn ?? 'N/A') : (user.email ?? 'N/A');
-
-    // Avatar colors
-    let avatarClass;
-    if (isStudent)   avatarClass = 'bg-emerald-400 text-white';
-    else if (isAdmin) avatarClass = 'bg-red-500 text-white';
-    else              avatarClass = 'bg-green-600 text-white';
-
-    // Role badge colors
-    let badgeClass;
-    if (isStudent)    badgeClass = 'bg-emerald-100 text-emerald-700';
-    else if (isAdmin)  badgeClass = 'bg-red-100 text-red-700';
-    else               badgeClass = 'bg-green-100 text-green-800';
-
-    // Populate modal
-    const avatar = document.getElementById('profileAvatar');
-    avatar.textContent = initials;
-    avatar.className = `w-16 h-16 rounded-full flex items-center justify-center font-black text-xl shadow-lg border-2 border-white/30 ${avatarClass}`;
-
-    document.getElementById('profileName').textContent = user.name;
-
-    const badge = document.getElementById('profileRoleBadge');
-    badge.textContent = user.role;
-    badge.className = `mt-1 inline-block px-3 py-0.5 text-xs font-black rounded-full uppercase tracking-widest ${badgeClass}`;
-
-    document.getElementById('profileIdentifier').textContent = identifier;
-    document.getElementById('profileRole').textContent = user.role;
-
-    // Show/hide email row for teachers & admins
-    const emailRow    = document.getElementById('profileEmailRow');
-    const profileEmail = document.getElementById('profileEmail');
-    if (!isStudent && user.email) {
-        profileEmail.textContent = user.email;
-        emailRow.classList.remove('hidden');
-    } else {
-        emailRow.classList.add('hidden');
-    }
-
-    openModal('profileModal');
+function openModal(id) {
+  const modal = document.getElementById(id);
+  if (modal) {
+    modal.classList.remove("hidden");
+    handleRoleSwitch();
+  }
 }
+
+function closeModal(id) {
+  const modal = document.getElementById(id);
+  if (modal) {
+    const form = modal.querySelector("form");
+    if (form) form.reset();
+    resetInputState();
+    modal.classList.add("hidden");
+  }
+}
+
+function togglePasswordVisibility(inputId, iconId) {
+  const input = document.getElementById(inputId);
+  const icon = document.getElementById(iconId);
+  if (input && icon) {
+    const isPassword = input.type === "password";
+    input.type = isPassword ? "text" : "password";
+    icon.classList.toggle("fa-eye");
+    icon.classList.toggle("fa-eye-slash");
+  }
+}
+
+function resetInputState() {
+  const roleSelect = document.getElementById("modalRole");
+  const lrnInput = document.getElementById("lrnInput");
+  const emailInput = document.getElementById("emailInput");
+
+  if (!roleSelect || !lrnInput || !emailInput) return;
+
+  const isTeacher = roleSelect.value === "Teacher" || roleSelect.value === "Admin";
+
+  emailInput.disabled = !isTeacher;
+  if (isTeacher) emailInput.setAttribute("required", "required");
+  else emailInput.removeAttribute("required");
+  emailInput.classList.toggle("bg-gray-200", !isTeacher);
+  emailInput.classList.toggle("cursor-not-allowed", !isTeacher);
+
+  lrnInput.disabled = isTeacher;
+  if (!isTeacher) lrnInput.setAttribute("required", "required");
+  else lrnInput.removeAttribute("required");
+  lrnInput.classList.toggle("bg-gray-200", isTeacher);
+  lrnInput.classList.toggle("cursor-not-allowed", isTeacher);
+  if (isTeacher) lrnInput.value = "";
+}
+
+function handleRoleSwitch() {
+  const roleSelect = document.getElementById("modalRole");
+  const lrnInput = document.getElementById("lrnInput");
+  const emailInput = document.getElementById("emailInput");
+
+  if (!roleSelect || !lrnInput || !emailInput) return;
+
+  if (roleSelect.value === "Teacher" || roleSelect.value === "Admin") {
+    emailInput.disabled = false;
+    emailInput.required = true;
+    emailInput.classList.remove("bg-gray-200", "cursor-not-allowed");
+    emailInput.classList.add("bg-gray-50");
+
+    lrnInput.disabled = true;
+    lrnInput.required = false;
+    lrnInput.value = "";
+    lrnInput.classList.add("bg-gray-200", "cursor-not-allowed");
+    lrnInput.classList.remove("bg-gray-50");
+  } else {
+    lrnInput.disabled = false;
+    lrnInput.required = true;
+    lrnInput.classList.remove("bg-gray-200", "cursor-not-allowed");
+    lrnInput.classList.add("bg-gray-50");
+
+    emailInput.disabled = true;
+    emailInput.required = false;
+    emailInput.value = "";
+    emailInput.classList.add("bg-gray-200", "cursor-not-allowed");
+    emailInput.classList.remove("bg-gray-50");
+  }
+}
+
+// ==========================================
+// TABLE LOADING FUNCTIONS
+// ==========================================
+
+function loadUsers(page = 1) {
+  const tableBody = document.querySelector("#userTableSection tbody");
+  const paginationWrapper = document.getElementById("paginationWrapper");
+
+  const role = document.getElementById("userRoleFilter")?.value || "";
+  const sort = document.getElementById("userSortFilter")?.value || "latest";
+  const search = document.getElementById("userSearchBar")?.value || "";
+
+  const params = new URLSearchParams({
+    p: page,
+    role: role,
+    sort: sort,
+    search: search,
+  });
+
+  fetch(window.location.pathname + "?" + params.toString())
+    .then((res) => res.text())
+    .then((html) => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+
+      const newTableBody = doc.querySelector("#userTableSection tbody");
+      const newPagination = doc.getElementById("paginationWrapper");
+
+      if (newTableBody && tableBody) {
+        tableBody.innerHTML = newTableBody.innerHTML;
+      }
+      if (newPagination && paginationWrapper) {
+        paginationWrapper.innerHTML = newPagination.innerHTML;
+      }
+
+      window.history.replaceState({}, document.title, window.location.pathname);
+    })
+    .catch((err) => console.error("Error loading users:", err));
+}
+
+function loadUserPage(pageNum) {
+  loadUsers(pageNum);
+}
+
+function resetFilters() {
+  const role = document.getElementById("userRoleFilter");
+  const sort = document.getElementById("userSortFilter");
+  const search = document.getElementById("userSearchBar");
+
+  if (role) role.value = "";
+  if (sort) sort.value = "latest";
+  if (search) search.value = "";
+
+  loadUsers(1);
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  const roleSelect = document.getElementById("modalRole");
+  if (roleSelect) {
+    roleSelect.addEventListener("change", handleRoleSwitch);
+  }
+
+  handleRoleSwitch();
+});
+
+setTimeout(() => {
+  document.getElementById("successAlert")?.remove();
+  document.getElementById("errorAlert")?.remove();
+}, 5000);
 </script>
 
 <?php

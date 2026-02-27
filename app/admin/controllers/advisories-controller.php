@@ -11,18 +11,74 @@ require_once __DIR__ . '/../models/advisories-model.php';
 
 class AdvisoriesController {
     private $advisoriesModel;
+    private $uploadDir = __DIR__ . '/../../../public/storage/photos/';
     
     public function __construct($pdo) {
         $this->advisoriesModel = new AdvisoriesModel($pdo);
+        if (!is_dir($this->uploadDir)) {
+            mkdir($this->uploadDir, 0755, true);
+        }
+    }
+    
+    // ============================================
+    // PROFILE PICTURE UPLOAD
+    // ============================================
+    
+    public function uploadProfilePicture() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['profile_pic'])) {
+            $file = $_FILES['profile_pic'];
+            $studentId = intval($_POST['student_id'] ?? 0);
+            
+            if ($studentId <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid student ID.']);
+                exit;
+            }
+            
+            // Validate file
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            $maxSize = 5 * 1024 * 1024; // 5MB
+            
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                echo json_encode(['success' => false, 'message' => 'File upload error.']);
+                exit;
+            }
+            
+            if (!in_array($file['type'], $allowedTypes)) {
+                echo json_encode(['success' => false, 'message' => 'Only JPG, PNG, and WebP images are allowed.']);
+                exit;
+            }
+            
+            if ($file['size'] > $maxSize) {
+                echo json_encode(['success' => false, 'message' => 'File size exceeds 5MB limit.']);
+                exit;
+            }
+            
+            try {
+                // Generate unique filename
+                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $filename = 'student_' . $studentId . '_' . time() . '.' . $ext;
+                $filepath = $this->uploadDir . $filename;
+                $relativePath = '/student-discipline-and-incident-reporting-system/public/storage/photos/' . $filename;
+                
+                // Move uploaded file
+                if (!move_uploaded_file($file['tmp_name'], $filepath)) {
+                    echo json_encode(['success' => false, 'message' => 'Failed to save file.']);
+                    exit;
+                }
+                
+                echo json_encode(['success' => true, 'path' => $relativePath, 'filename' => $filename]);
+                exit;
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+                exit;
+            }
+        }
     }
     
     // ============================================
     // TEACHER ASSIGNMENT METHODS
     // ============================================
     
-    /**
-     * Assign a teacher as advisory teacher
-     */
     public function assignAdvisoryTeacher() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = [
@@ -32,7 +88,6 @@ class AdvisoriesController {
                 'grade_level' => trim($_POST['grade_level'] ?? '')
             ];
             
-            // Validation
             if (empty($data['teacher_id']) || $data['teacher_id'] <= 0) {
                 echo json_encode(['success' => false, 'message' => 'Please select a valid teacher.']);
                 exit;
@@ -43,14 +98,11 @@ class AdvisoriesController {
                 exit;
             }
             
-            // Additional validation for advisory teachers
             if ($data['role_type'] === 'advisory') {
                 if (empty($data['advisory_name'])) {
                     echo json_encode(['success' => false, 'message' => 'Advisory class name is required.']);
                     exit;
                 }
-                
-                // NEW: Validate grade level is selected
                 if (empty($data['grade_level']) || !in_array($data['grade_level'], ['7', '8', '9', '10'])) {
                     echo json_encode(['success' => false, 'message' => 'Please select a valid grade level (7-10).']);
                     exit;
@@ -63,9 +115,6 @@ class AdvisoriesController {
         }
     }
     
-    /**
-     * Convert advisory teacher to subject teacher
-     */
     public function convertToSubjectTeacher() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $advisory_id = intval($_POST['advisory_id'] ?? 0);
@@ -85,16 +134,12 @@ class AdvisoriesController {
     // STUDENT ASSIGNMENT METHODS
     // ============================================
     
-    /**
-     * Assign students to advisory teacher
-     */
     public function assignStudentsToAdvisory() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $advisory_id = intval($_POST['advisory_id'] ?? 0);
             $student_ids = $_POST['student_ids'] ?? [];
             $grade_levels = $_POST['grade_levels'] ?? [];
             
-            // Validation
             if ($advisory_id <= 0) {
                 echo json_encode(['success' => false, 'message' => 'Please select an advisory teacher.']);
                 exit;
@@ -105,7 +150,6 @@ class AdvisoriesController {
                 exit;
             }
             
-            // NEW: Validate grade level match with advisory
             $advisoryInfo = $this->advisoriesModel->getAdvisoryById($advisory_id);
             if (!$advisoryInfo) {
                 echo json_encode(['success' => false, 'message' => 'Advisory class not found.']);
@@ -130,9 +174,6 @@ class AdvisoriesController {
         }
     }
     
-    /**
-     * Reassign student to different advisory
-     */
     public function reassignStudent() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $assignment_id = intval($_POST['assignment_id'] ?? 0);
@@ -149,7 +190,6 @@ class AdvisoriesController {
                 exit;
             }
             
-            // NEW: Validate grade match
             $advisoryInfo = $this->advisoriesModel->getAdvisoryById($new_advisory_id);
             if ($advisoryInfo && $advisoryInfo['grade_level'] !== $current_grade) {
                 echo json_encode([
@@ -165,9 +205,6 @@ class AdvisoriesController {
         }
     }
     
-    /**
-     * Remove student from advisory
-     */
     public function removeFromAdvisory() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $assignment_id = intval($_POST['assignment_id'] ?? 0);
@@ -183,9 +220,6 @@ class AdvisoriesController {
         }
     }
     
-    /**
-     * NEW: Update student grade level
-     */
     public function updateStudentGrade() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $assignment_id = intval($_POST['assignment_id'] ?? 0);
@@ -207,15 +241,11 @@ class AdvisoriesController {
         }
     }
     
-    /**
-     * NEW: Bulk update student grades (for grade promotion)
-     */
     public function bulkUpdateStudentGrade() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $assignment_ids = $_POST['assignment_ids'] ?? [];
             $new_grade = trim($_POST['new_grade'] ?? '');
             
-            // Validation
             if (empty($assignment_ids) || !is_array($assignment_ids)) {
                 echo json_encode(['success' => false, 'message' => 'Please select at least one student.']);
                 exit;
@@ -226,7 +256,6 @@ class AdvisoriesController {
                 exit;
             }
             
-            // Sanitize assignment IDs
             $assignment_ids = array_map('intval', $assignment_ids);
             $assignment_ids = array_filter($assignment_ids, function($id) {
                 return $id > 0;
@@ -242,42 +271,97 @@ class AdvisoriesController {
             exit;
         }
     }
+
+    // ============================================
+    // STUDENT PROFILE
+    // ============================================
+
+    public function getStudentProfile() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $student_id = intval($_POST['student_id'] ?? 0);
+
+            if ($student_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid student ID.']);
+                exit;
+            }
+
+            $profile = $this->advisoriesModel->getStudentProfile($student_id);
+            if (!$profile) {
+                echo json_encode(['success' => false, 'message' => 'Student not found.']);
+                exit;
+            }
+
+            echo json_encode(['success' => true, 'data' => $profile]);
+            exit;
+        }
+    }
+
+    public function updateStudentInfo() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $student_id = intval($_POST['student_id'] ?? 0);
+
+            if ($student_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid student ID.']);
+                exit;
+            }
+
+            $data = [
+                'first_name'   => trim($_POST['first_name']   ?? ''),
+                'mi'           => trim($_POST['mi']            ?? ''),
+                'last_name'    => trim($_POST['last_name']     ?? ''),
+                'lrn'          => trim($_POST['lrn']           ?? ''),
+                'contact_no'   => trim($_POST['contact_no']    ?? ''),
+                'home_address' => trim($_POST['home_address']  ?? ''),
+                'profile_pix'  => trim($_POST['profile_pix']   ?? ''),
+            ];
+
+            $result = $this->advisoriesModel->updateStudentInfo($student_id, $data);
+            echo json_encode($result);
+            exit;
+        }
+    }
+
+    public function updateStudentGradeById() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $student_id = intval($_POST['student_id'] ?? 0);
+            $new_grade  = trim($_POST['new_grade'] ?? '');
+
+            if ($student_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid student ID.']);
+                exit;
+            }
+
+            if (!in_array($new_grade, ['7','8','9','10','11','12'])) {
+                echo json_encode(['success' => false, 'message' => 'Invalid grade level.']);
+                exit;
+            }
+
+            $result = $this->advisoriesModel->updateStudentGradeByStudentId($student_id, $new_grade);
+            echo json_encode($result);
+            exit;
+        }
+    }
     
     // ============================================
     // DATA RETRIEVAL METHODS
     // ============================================
     
-    /**
-     * Get all available teachers (for dropdown)
-     */
     public function getAllTeachers() {
         return $this->advisoriesModel->getAllTeachers();
     }
     
-    /**
-     * Get all advisory teachers
-     */
     public function getAdvisoryTeachers() {
         return $this->advisoriesModel->getAdvisoryTeachers();
     }
     
-    /**
-     * Get all subject teachers
-     */
     public function getSubjectTeachers() {
         return $this->advisoriesModel->getSubjectTeachers();
     }
     
-    /**
-     * Get all students (for assignment modal)
-     */
     public function getAllStudents() {
         return $this->advisoriesModel->getAllStudents();
     }
     
-    /**
-     * Get assigned students with filters
-     */
     public function getAssignedStudents($filters = []) {
         $teacher_role = $filters['teacher_role'] ?? '';
         $grade_level = $filters['grade_level'] ?? '';
@@ -289,9 +373,6 @@ class AdvisoriesController {
         return $this->advisoriesModel->getAssignedStudents($teacher_role, $grade_level, $date_filter, $search, $sort_by, $sort_order);
     }
     
-    /**
-     * Get students by advisory ID
-     */
     public function getStudentsByAdvisory($advisory_id) {
         return $this->advisoriesModel->getStudentsByAdvisory($advisory_id);
     }
@@ -300,9 +381,6 @@ class AdvisoriesController {
     // AJAX HANDLERS
     // ============================================
     
-    /**
-     * Handle AJAX requests
-     */
     public function handleAjaxRequest() {
         header('Content-Type: application/json');
         
@@ -318,7 +396,6 @@ class AdvisoriesController {
                     'sort_by' => $_POST['sort_by'] ?? 'student_name',
                     'sort_order' => $_POST['sort_order'] ?? 'ASC'
                 ];
-                
                 $data = $this->getAssignedStudents($filters);
                 echo json_encode(['success' => true, 'data' => $data]);
                 break;
@@ -351,6 +428,58 @@ class AdvisoriesController {
                 $advisory_id = $_POST['advisory_id'] ?? 0;
                 $students = $this->getStudentsByAdvisory($advisory_id);
                 echo json_encode(['success' => true, 'data' => $students]);
+                break;
+
+            case 'get_student_profile':
+                $student_id = intval($_POST['student_id'] ?? 0);
+                if ($student_id <= 0) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid student ID.']);
+                    break;
+                }
+                $profile = $this->advisoriesModel->getStudentProfile($student_id);
+                if (!$profile) {
+                    echo json_encode(['success' => false, 'message' => 'Student not found.']);
+                    break;
+                }
+                echo json_encode(['success' => true, 'data' => $profile]);
+                break;
+
+            case 'update_student_info':
+                $student_id = intval($_POST['student_id'] ?? 0);
+                if ($student_id <= 0) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid student ID.']);
+                    break;
+                }
+                $data = [
+                    'first_name'   => trim($_POST['first_name']   ?? ''),
+                    'mi'           => trim($_POST['mi']            ?? ''),
+                    'last_name'    => trim($_POST['last_name']     ?? ''),
+                    'lrn'          => trim($_POST['lrn']           ?? ''),
+                    'contact_no'   => trim($_POST['contact_no']    ?? ''),
+                    'home_address' => trim($_POST['home_address']  ?? ''),
+                    'profile_pix'  => trim($_POST['profile_pix']   ?? ''),
+                ];
+                $result = $this->advisoriesModel->updateStudentInfo($student_id, $data);
+                echo json_encode($result);
+                break;
+
+            case 'update_student_grade_by_id':
+                $student_id = intval($_POST['student_id'] ?? 0);
+                $new_grade  = trim($_POST['new_grade'] ?? '');
+                if ($student_id <= 0) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid student ID.']);
+                    break;
+                }
+                if (!in_array($new_grade, ['7','8','9','10','11','12'])) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid grade level.']);
+                    break;
+                }
+                $result = $this->advisoriesModel->updateStudentGradeByStudentId($student_id, $new_grade);
+                echo json_encode($result);
+                break;
+                
+            case 'upload_profile_pic':
+                $this->uploadProfilePicture();
                 break;
                 
             default:
@@ -396,13 +525,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'bulk_update_student_grade':
             $advisoriesController->bulkUpdateStudentGrade();
             break;
-            
+
+        case 'update_student_grade_by_id':
+            $advisoriesController->updateStudentGradeById();
+            break;
+
+        case 'get_student_profile':
+        case 'update_student_info':
         case 'get_filtered_data':
         case 'get_unassigned_students':
         case 'get_advisory_teachers':
         case 'get_subject_teachers':
         case 'get_advisory_list':
         case 'get_advisory_students':
+        case 'upload_profile_pic':
             $advisoriesController->handleAjaxRequest();
             break;
     }
