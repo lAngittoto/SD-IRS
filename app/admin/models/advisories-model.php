@@ -6,9 +6,46 @@ class AdvisoriesModel {
     private $users_table = 'user_management';
     private $teacher_roles_table = 'teacher_roles';
     private $student_info_table = 'student_info';
+    private $school_years_table = 'school_years';
     
     public function __construct($pdo) {
         $this->conn = $pdo;
+        $this->ensureGuardianColumns();
+    }
+
+    private function ensureGuardianColumns() {
+        try {
+            $this->conn->exec("ALTER TABLE {$this->student_info_table} ADD COLUMN IF NOT EXISTS guardian_name VARCHAR(150) DEFAULT NULL");
+        } catch (PDOException $e) { }
+        try {
+            $this->conn->exec("ALTER TABLE {$this->student_info_table} ADD COLUMN IF NOT EXISTS guardian_contact VARCHAR(15) DEFAULT NULL");
+        } catch (PDOException $e) { }
+    }
+    
+    public function getActiveSchoolYear() {
+        try {
+            $query = "SELECT school_year_id, start_year, end_year FROM {$this->school_years_table} WHERE status = 'ACTIVE' LIMIT 1";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute();
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
+
+    public function updateSchoolYear($school_year_id, $start_year, $end_year) {
+        try {
+            $query = "UPDATE {$this->school_years_table} SET start_year = :start_year, end_year = :end_year WHERE school_year_id = :school_year_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([
+                ':school_year_id' => $school_year_id,
+                ':start_year' => $start_year,
+                ':end_year' => $end_year
+            ]);
+            return ['success' => true, 'message' => "School year updated to {$start_year} - {$end_year}"];
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
     }
     
     public function assignAdvisoryTeacher($data) {
@@ -95,7 +132,7 @@ class AdvisoriesModel {
         }
     }
     
-    public function assignStudentsToAdvisory($advisory_id, $student_ids, $grade_levels) {
+    public function assignStudentsToAdvisory($advisory_id, $student_ids, $grade_levels, $school_year_id) {
         try {
             $this->conn->beginTransaction();
             
@@ -128,18 +165,18 @@ class AdvisoriesModel {
                 $student_id = intval($student_id);
                 $grade_level = isset($grade_levels[$student_id]) ? $grade_levels[$student_id] : $advisory['grade_level'];
                 
-                $checkQuery = "SELECT assignment_id FROM {$this->assignment_table} WHERE student_id = :student_id";
+                $checkQuery = "SELECT assignment_id FROM {$this->assignment_table} WHERE student_id = :student_id AND school_year_id = :school_year_id";
                 $checkStmt = $this->conn->prepare($checkQuery);
-                $checkStmt->execute([':student_id' => $student_id]);
+                $checkStmt->execute([':student_id' => $student_id, ':school_year_id' => $school_year_id]);
                 
                 if ($checkStmt->rowCount() > 0) {
                     $skippedCount++;
                     continue;
                 }
                 
-                $insertQuery = "INSERT INTO {$this->assignment_table} (advisory_id, student_id, grade_level, assigned_date) VALUES (:advisory_id, :student_id, :grade_level, NOW())";
+                $insertQuery = "INSERT INTO {$this->assignment_table} (advisory_id, student_id, grade_level, school_year_id, assigned_date) VALUES (:advisory_id, :student_id, :grade_level, :school_year_id, NOW())";
                 $insertStmt = $this->conn->prepare($insertQuery);
-                $insertStmt->execute([':advisory_id' => $advisory_id, ':student_id' => $student_id, ':grade_level' => $grade_level]);
+                $insertStmt->execute([':advisory_id' => $advisory_id, ':student_id' => $student_id, ':grade_level' => $grade_level, ':school_year_id' => $school_year_id]);
                 $successCount++;
             }
             
@@ -271,7 +308,7 @@ class AdvisoriesModel {
                 return ['success' => true, 'message' => $message, 'promoted_grade' => $new_grade];
             } else {
                 $this->conn->rollBack();
-                return ['success' => false, 'message' => 'No students promoted.'];
+                return ['success' => false, 'message' => implode(', ', $errorMessages) ?: 'No students promoted.'];
             }
         } catch (PDOException $e) {
             $this->conn->rollBack();
@@ -281,13 +318,60 @@ class AdvisoriesModel {
 
     public function getStudentProfile($student_id) {
         try {
-            $query = "SELECT u.user_id, u.name, u.email, u.lrn, COALESCE(si.contact_no, '') as contact_no, COALESCE(si.home_address, '') as home_address, COALESCE(si.profile_pix, '') as profile_pix, COALESCE(aa.grade_level, '') as current_grade, COALESCE(ac.advisory_name, '') as advisory_name, COALESCE(t.name, '') as teacher_name FROM {$this->users_table} u LEFT JOIN {$this->student_info_table} si ON u.user_id = si.user_id LEFT JOIN {$this->assignment_table} aa ON u.user_id = aa.student_id LEFT JOIN {$this->advisory_table} ac ON aa.advisory_id = ac.advisory_id LEFT JOIN {$this->users_table} t ON ac.teacher_id = t.user_id WHERE u.user_id = :student_id AND u.role = 'Student' LIMIT 1";
+            // First, ensure guardian columns exist in student_info
+            try {
+                $this->conn->exec("ALTER TABLE {$this->student_info_table} ADD COLUMN IF NOT EXISTS guardian_name VARCHAR(150) DEFAULT NULL");
+                $this->conn->exec("ALTER TABLE {$this->student_info_table} ADD COLUMN IF NOT EXISTS guardian_contact VARCHAR(15) DEFAULT NULL");
+            } catch (PDOException $e) {
+                // Columns may already exist
+            }
+
+            $query = "SELECT 
+                        u.user_id, u.name, u.email, u.lrn,
+                        COALESCE(si.contact_no, '') as contact_no,
+                        COALESCE(si.home_address, '') as home_address,
+                        COALESCE(si.profile_pix, '') as profile_pix,
+                        COALESCE(si.guardian_name, '') as guardian_name,
+                        COALESCE(si.guardian_contact, '') as guardian_contact,
+                        COALESCE(aa.grade_level, '') as current_grade,
+                        COALESCE(ac.advisory_name, '') as advisory_name,
+                        COALESCE(t.name, '') as teacher_name
+                      FROM {$this->users_table} u
+                      LEFT JOIN {$this->student_info_table} si ON u.user_id = si.user_id
+                      LEFT JOIN {$this->assignment_table} aa ON u.user_id = aa.student_id
+                      LEFT JOIN {$this->advisory_table} ac ON aa.advisory_id = ac.advisory_id
+                      LEFT JOIN {$this->users_table} t ON ac.teacher_id = t.user_id
+                      WHERE u.user_id = :student_id AND u.role = 'Student'";
+            
             $stmt = $this->conn->prepare($query);
             $stmt->execute([':student_id' => $student_id]);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result) {
+                return $result;
+            }
+            return null;
         } catch (PDOException $e) {
             error_log("getStudentProfile error: " . $e->getMessage());
             return null;
+        }
+    }
+
+    public function getStudentHistory($student_id) {
+        try {
+            $query = "SELECT sy.start_year, sy.end_year, aa.grade_level, ac.advisory_name, t.name as teacher_name, aa.assigned_date
+                      FROM {$this->assignment_table} aa
+                      INNER JOIN {$this->school_years_table} sy ON aa.school_year_id = sy.school_year_id
+                      INNER JOIN {$this->advisory_table} ac ON aa.advisory_id = ac.advisory_id
+                      INNER JOIN {$this->users_table} t ON ac.teacher_id = t.user_id
+                      WHERE aa.student_id = :student_id
+                      ORDER BY sy.start_year DESC, aa.assigned_date DESC";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([':student_id' => $student_id]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("getStudentHistory error: " . $e->getMessage());
+            return [];
         }
     }
 
@@ -312,9 +396,40 @@ class AdvisoriesModel {
             $updateUserStmt->execute([':name' => $fullName ?: ($data['name'] ?? ''), ':lrn' => $data['lrn'] ?? null, ':user_id' => $student_id]);
 
             $profilePicPath = $data['profile_pix'] ?? null;
-            $upsertQuery = "INSERT INTO {$this->student_info_table} (user_id, contact_no, home_address, profile_pix) VALUES (:user_id, :contact_no, :home_address, :profile_pix) ON DUPLICATE KEY UPDATE contact_no = VALUES(contact_no), home_address = VALUES(home_address), profile_pix = COALESCE(VALUES(profile_pix), profile_pix)";
-            $upsertStmt = $this->conn->prepare($upsertQuery);
-            $upsertStmt->execute([':user_id' => $student_id, ':contact_no' => $data['contact_no'] ?? null, ':home_address' => $data['home_address'] ?? null, ':profile_pix' => $profilePicPath]);
+
+            try {
+                $upsertQuery = "INSERT INTO {$this->student_info_table} (user_id, contact_no, home_address, profile_pix, guardian_name, guardian_contact)
+                                VALUES (:user_id, :contact_no, :home_address, :profile_pix, :guardian_name, :guardian_contact)
+                                ON DUPLICATE KEY UPDATE
+                                  contact_no = VALUES(contact_no),
+                                  home_address = VALUES(home_address),
+                                  profile_pix = COALESCE(VALUES(profile_pix), profile_pix),
+                                  guardian_name = VALUES(guardian_name),
+                                  guardian_contact = VALUES(guardian_contact)";
+                $upsertStmt = $this->conn->prepare($upsertQuery);
+                $upsertStmt->execute([
+                    ':user_id'          => $student_id,
+                    ':contact_no'       => $data['contact_no'] ?? null,
+                    ':home_address'     => $data['home_address'] ?? null,
+                    ':profile_pix'      => $profilePicPath,
+                    ':guardian_name'    => $data['guardian_name'] ?? null,
+                    ':guardian_contact' => $data['guardian_contact'] ?? null,
+                ]);
+            } catch (PDOException $e2) {
+                $upsertQuery = "INSERT INTO {$this->student_info_table} (user_id, contact_no, home_address, profile_pix)
+                                VALUES (:user_id, :contact_no, :home_address, :profile_pix)
+                                ON DUPLICATE KEY UPDATE
+                                  contact_no = VALUES(contact_no),
+                                  home_address = VALUES(home_address),
+                                  profile_pix = COALESCE(VALUES(profile_pix), profile_pix)";
+                $upsertStmt = $this->conn->prepare($upsertQuery);
+                $upsertStmt->execute([
+                    ':user_id'      => $student_id,
+                    ':contact_no'   => $data['contact_no'] ?? null,
+                    ':home_address' => $data['home_address'] ?? null,
+                    ':profile_pix'  => $profilePicPath,
+                ]);
+            }
 
             $this->conn->commit();
             return ['success' => true, 'message' => 'Student record updated!'];
@@ -353,51 +468,42 @@ class AdvisoriesModel {
 
     public function getTeacherProfile($advisory_id) {
         try {
-            error_log("getTeacherProfile: Fetching for advisory_id = " . $advisory_id);
-            
-            // Simple query that doesn't depend on teacher_info existing
-            $query = "SELECT u.user_id, u.name, u.email, a.advisory_id, a.teacher_id, a.advisory_name, a.grade_level, COALESCE(tr.role_type, 'advisory') as role_type FROM {$this->advisory_table} a INNER JOIN {$this->users_table} u ON a.teacher_id = u.user_id LEFT JOIN {$this->teacher_roles_table} tr ON a.teacher_id = tr.teacher_id WHERE a.advisory_id = :advisory_id LIMIT 1";
-            
+            $query = "SELECT u.user_id, u.name, u.email, a.advisory_id, a.teacher_id, a.advisory_name, a.grade_level,
+                             COALESCE(tr.role_type, 'advisory') as role_type
+                      FROM {$this->advisory_table} a
+                      INNER JOIN {$this->users_table} u ON a.teacher_id = u.user_id
+                      LEFT JOIN {$this->teacher_roles_table} tr ON a.teacher_id = tr.teacher_id
+                      WHERE a.advisory_id = :advisory_id LIMIT 1";
             $stmt = $this->conn->prepare($query);
             $stmt->execute([':advisory_id' => $advisory_id]);
             $teacher = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if (!$teacher) {
-                error_log("No teacher found for advisory_id: " . $advisory_id);
-                return null;
-            }
+            if (!$teacher) return null;
             
-            error_log("Found teacher: " . $teacher['name']);
-            
-            // Add default values for teacher_info fields
-            $teacher['teacher_no'] = '';
-            $teacher['contact_no'] = '';
-            $teacher['department'] = '';
+            $teacher['teacher_no']       = '';
+            $teacher['contact_no']       = '';
+            $teacher['department']       = '';
             $teacher['advisory_section'] = '';
-            $teacher['profile_pix'] = '';
+            $teacher['profile_pix']      = '';
+            $teacher['specialization']   = '';
             
-            // Try to get teacher_info if it exists
             try {
                 $infoQuery = "SELECT teacher_no, contact_no, department, advisory_section, profile_pix FROM teacher_info WHERE user_id = :user_id LIMIT 1";
                 $infoStmt = $this->conn->prepare($infoQuery);
                 $infoStmt->execute([':user_id' => $teacher['user_id']]);
                 $info = $infoStmt->fetch(PDO::FETCH_ASSOC);
-                
                 if ($info) {
-                    $teacher['teacher_no'] = $info['teacher_no'] ?? '';
-                    $teacher['contact_no'] = $info['contact_no'] ?? '';
-                    $teacher['department'] = $info['department'] ?? '';
+                    $teacher['teacher_no']       = $info['teacher_no'] ?? '';
+                    $teacher['contact_no']       = $info['contact_no'] ?? '';
+                    $teacher['department']       = $info['department'] ?? '';
                     $teacher['advisory_section'] = $info['advisory_section'] ?? '';
-                    $teacher['profile_pix'] = $info['profile_pix'] ?? '';
-                    error_log("Loaded teacher_info for user_id: " . $teacher['user_id']);
+                    $teacher['profile_pix']      = $info['profile_pix'] ?? '';
+                    $teacher['specialization']   = $info['advisory_section'] ?? '';
                 }
-            } catch (PDOException $e) {
-                error_log("teacher_info table might not exist, using defaults");
-            }
+            } catch (PDOException $e) { }
             
             return $teacher;
         } catch (PDOException $e) {
-            error_log("getTeacherProfile error: " . $e->getMessage());
             return null;
         }
     }
@@ -413,7 +519,6 @@ class AdvisoriesModel {
 
             $profilePicPath = $data['profile_pix'] ?? null;
 
-            // Create teacher_info table if it doesn't exist
             $this->conn->exec("CREATE TABLE IF NOT EXISTS teacher_info (
                 teacher_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                 user_id INT UNSIGNED NOT NULL UNIQUE,
@@ -426,24 +531,22 @@ class AdvisoriesModel {
                 CONSTRAINT fk_teacher_user FOREIGN KEY (user_id) REFERENCES user_management(user_id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-            // Use INSERT ... ON DUPLICATE KEY UPDATE
-            $upsertQuery = "INSERT INTO teacher_info (user_id, teacher_no, contact_no, department, advisory_section, profile_pix) 
-                            VALUES (:user_id, :teacher_no, :contact_no, :department, :advisory_section, :profile_pix) 
-                            ON DUPLICATE KEY UPDATE 
+            $upsertQuery = "INSERT INTO teacher_info (user_id, teacher_no, contact_no, department, advisory_section, profile_pix)
+                            VALUES (:user_id, :teacher_no, :contact_no, :department, :advisory_section, :profile_pix)
+                            ON DUPLICATE KEY UPDATE
                               teacher_no = VALUES(teacher_no),
                               contact_no = VALUES(contact_no),
                               department = VALUES(department),
                               advisory_section = VALUES(advisory_section),
                               profile_pix = COALESCE(VALUES(profile_pix), profile_pix)";
-            
             $upsertStmt = $this->conn->prepare($upsertQuery);
             $upsertStmt->execute([
-                ':user_id' => $teacher_id,
-                ':teacher_no' => $data['teacher_id_field'] ?? null,
-                ':contact_no' => $data['contact_no'] ?? null,
-                ':department' => $data['department'] ?? null,
+                ':user_id'          => $teacher_id,
+                ':teacher_no'       => $data['teacher_id_field'] ?? null,
+                ':contact_no'       => $data['contact_no'] ?? null,
+                ':department'       => $data['department'] ?? null,
                 ':advisory_section' => $data['specialization'] ?? null,
-                ':profile_pix' => $profilePicPath
+                ':profile_pix'      => $profilePicPath,
             ]);
 
             $this->conn->commit();
@@ -467,7 +570,10 @@ class AdvisoriesModel {
     
     public function getAllTeachers() {
         try {
-            $query = "SELECT u.user_id, u.name, u.email FROM {$this->users_table} u LEFT JOIN {$this->advisory_table} a ON u.user_id = a.teacher_id WHERE u.role = 'Teacher' AND a.advisory_id IS NULL ORDER BY u.name ASC";
+            $query = "SELECT u.user_id, u.name, u.email FROM {$this->users_table} u
+                      LEFT JOIN {$this->advisory_table} a ON u.user_id = a.teacher_id
+                      WHERE u.role = 'Teacher' AND a.advisory_id IS NULL
+                      ORDER BY u.name ASC";
             $stmt = $this->conn->prepare($query);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -478,7 +584,15 @@ class AdvisoriesModel {
     
     public function getAdvisoryTeachers() {
         try {
-            $query = "SELECT a.advisory_id, a.teacher_id, u.name as teacher_name, u.email as teacher_email, a.advisory_name, a.grade_level, tr.role_type, a.created_at as assigned_date, COUNT(aa.assignment_id) as student_count FROM {$this->advisory_table} a INNER JOIN {$this->users_table} u ON a.teacher_id = u.user_id LEFT JOIN {$this->teacher_roles_table} tr ON a.teacher_id = tr.teacher_id LEFT JOIN {$this->assignment_table} aa ON a.advisory_id = aa.advisory_id GROUP BY a.advisory_id, a.teacher_id, u.name, u.email, a.advisory_name, a.grade_level, tr.role_type, a.created_at ORDER BY a.created_at DESC";
+            $query = "SELECT a.advisory_id, a.teacher_id, u.name as teacher_name, u.email as teacher_email,
+                             a.advisory_name, a.grade_level, tr.role_type, a.created_at as assigned_date,
+                             COUNT(aa.assignment_id) as student_count
+                      FROM {$this->advisory_table} a
+                      INNER JOIN {$this->users_table} u ON a.teacher_id = u.user_id
+                      LEFT JOIN {$this->teacher_roles_table} tr ON a.teacher_id = tr.teacher_id
+                      LEFT JOIN {$this->assignment_table} aa ON a.advisory_id = aa.advisory_id
+                      GROUP BY a.advisory_id, a.teacher_id, u.name, u.email, a.advisory_name, a.grade_level, tr.role_type, a.created_at
+                      ORDER BY a.created_at DESC";
             $stmt = $this->conn->prepare($query);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -489,7 +603,12 @@ class AdvisoriesModel {
     
     public function getSubjectTeachers() {
         try {
-            $query = "SELECT u.user_id as teacher_id, u.name as teacher_name, u.email as teacher_email, tr.role_type, tr.assigned_at FROM {$this->teacher_roles_table} tr INNER JOIN {$this->users_table} u ON tr.teacher_id = u.user_id WHERE tr.role_type = 'subject' ORDER BY tr.assigned_at DESC";
+            $query = "SELECT u.user_id as teacher_id, u.name as teacher_name, u.email as teacher_email,
+                             tr.role_type, tr.assigned_at
+                      FROM {$this->teacher_roles_table} tr
+                      INNER JOIN {$this->users_table} u ON tr.teacher_id = u.user_id
+                      WHERE tr.role_type = 'subject'
+                      ORDER BY tr.assigned_at DESC";
             $stmt = $this->conn->prepare($query);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -500,7 +619,11 @@ class AdvisoriesModel {
     
     public function getAllStudents() {
         try {
-            $query = "SELECT DISTINCT u.user_id, u.name, u.lrn, '7' as grade_level FROM {$this->users_table} u LEFT JOIN {$this->assignment_table} aa ON u.user_id = aa.student_id WHERE u.role = 'Student' AND aa.assignment_id IS NULL ORDER BY u.name ASC";
+            $query = "SELECT DISTINCT u.user_id, u.name, u.lrn, '7' as grade_level
+                      FROM {$this->users_table} u
+                      LEFT JOIN {$this->assignment_table} aa ON u.user_id = aa.student_id
+                      WHERE u.role = 'Student' AND aa.assignment_id IS NULL
+                      ORDER BY u.name ASC";
             $stmt = $this->conn->prepare($query);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -509,9 +632,14 @@ class AdvisoriesModel {
         }
     }
     
-    public function getUnassignedStudents($advisory_id = 0, $grade_level = '') {
+    public function getUnassignedStudents() {
         try {
-            $query = "SELECT u.user_id, u.name, u.lrn, COALESCE((SELECT sp.to_grade FROM student_promotions sp WHERE sp.student_id = u.user_id ORDER BY sp.promoted_at DESC LIMIT 1), '7') as grade_level FROM {$this->users_table} u WHERE u.role = 'Student' AND u.user_id NOT IN (SELECT student_id FROM {$this->assignment_table}) ORDER BY u.name ASC";
+            $query = "SELECT u.user_id, u.name, u.lrn,
+                             COALESCE((SELECT sp.to_grade FROM student_promotions sp WHERE sp.student_id = u.user_id ORDER BY sp.promoted_at DESC LIMIT 1), '7') as grade_level
+                      FROM {$this->users_table} u
+                      WHERE u.role = 'Student'
+                        AND u.user_id NOT IN (SELECT student_id FROM {$this->assignment_table})
+                      ORDER BY u.name ASC";
             $stmt = $this->conn->prepare($query);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -522,10 +650,19 @@ class AdvisoriesModel {
     
     public function getAssignedStudents($teacher_role = '', $grade_level = '', $date_filter = '', $search = '', $sort_by = 'student_name', $sort_order = 'ASC') {
         try {
-            $sort_by = in_array($sort_by, ['student_name', 'lrn', 'grade_level', 'teacher_name', 'advisory_name', 'assigned_date']) ? $sort_by : 'student_name';
+            $sort_by    = in_array($sort_by, ['student_name','lrn','grade_level','teacher_name','advisory_name','assigned_date']) ? $sort_by : 'student_name';
             $sort_order = strtoupper($sort_order) === 'DESC' ? 'DESC' : 'ASC';
             
-            $query = "SELECT aa.assignment_id, aa.student_id, s.name as student_name, s.lrn, aa.grade_level, aa.assigned_date, at.advisory_id, at.advisory_name, tr.role_type, t.name as teacher_name, t.email as teacher_email FROM {$this->assignment_table} aa INNER JOIN {$this->users_table} s ON aa.student_id = s.user_id INNER JOIN {$this->advisory_table} at ON aa.advisory_id = at.advisory_id INNER JOIN {$this->users_table} t ON at.teacher_id = t.user_id LEFT JOIN {$this->teacher_roles_table} tr ON at.teacher_id = tr.teacher_id WHERE 1=1";
+            $query = "SELECT aa.assignment_id, aa.student_id, s.name as student_name, s.lrn,
+                             aa.grade_level, aa.assigned_date,
+                             at.advisory_id, at.advisory_name, tr.role_type,
+                             t.name as teacher_name, t.email as teacher_email
+                      FROM {$this->assignment_table} aa
+                      INNER JOIN {$this->users_table} s ON aa.student_id = s.user_id
+                      INNER JOIN {$this->advisory_table} at ON aa.advisory_id = at.advisory_id
+                      INNER JOIN {$this->users_table} t ON at.teacher_id = t.user_id
+                      LEFT JOIN {$this->teacher_roles_table} tr ON at.teacher_id = tr.teacher_id
+                      WHERE 1=1";
             
             $params = [];
             
@@ -533,25 +670,28 @@ class AdvisoriesModel {
                 $query .= " AND tr.role_type = :teacher_role";
                 $params[':teacher_role'] = $teacher_role;
             }
-            
             if (!empty($grade_level)) {
                 $query .= " AND aa.grade_level = :grade_level";
                 $params[':grade_level'] = $grade_level;
             }
-            
             if (!empty($date_filter)) {
                 $query .= " AND DATE(aa.assigned_date) = :date_filter";
                 $params[':date_filter'] = $date_filter;
             }
-            
             if (!empty($search)) {
                 $query .= " AND (s.name LIKE :search OR s.lrn LIKE :search OR t.name LIKE :search OR at.advisory_name LIKE :search)";
                 $params[':search'] = "%$search%";
             }
             
-            $sortColumnMap = ['student_name' => 's.name', 'lrn' => 's.lrn', 'grade_level' => 'aa.grade_level', 'teacher_name' => 't.name', 'advisory_name' => 'at.advisory_name', 'assigned_date' => 'aa.assigned_date'];
+            $sortColumnMap = [
+                'student_name'  => 's.name',
+                'lrn'           => 's.lrn',
+                'grade_level'   => 'aa.grade_level',
+                'teacher_name'  => 't.name',
+                'advisory_name' => 'at.advisory_name',
+                'assigned_date' => 'aa.assigned_date',
+            ];
             $orderByColumn = $sortColumnMap[$sort_by] ?? 's.name';
-            
             $query .= " ORDER BY {$orderByColumn} {$sort_order}";
             
             $stmt = $this->conn->prepare($query);
@@ -564,13 +704,24 @@ class AdvisoriesModel {
     
     public function getAdvisoryList($sort_by = 'advisory_name', $sort_order = 'ASC') {
         try {
-            $sort_by = in_array($sort_by, ['advisory_name', 'teacher_name', 'grade_level', 'student_count']) ? $sort_by : 'advisory_name';
+            $sort_by    = in_array($sort_by, ['advisory_name','teacher_name','grade_level','student_count']) ? $sort_by : 'advisory_name';
             $sort_order = strtoupper($sort_order) === 'DESC' ? 'DESC' : 'ASC';
             
-            $sortColumnMap = ['advisory_name' => 'a.advisory_name', 'teacher_name' => 'u.name', 'grade_level' => 'a.grade_level', 'student_count' => 'student_count'];
+            $sortColumnMap = [
+                'advisory_name' => 'a.advisory_name',
+                'teacher_name'  => 'u.name',
+                'grade_level'   => 'a.grade_level',
+                'student_count' => 'student_count',
+            ];
             $orderByColumn = $sortColumnMap[$sort_by] ?? 'a.advisory_name';
             
-            $query = "SELECT a.advisory_id, a.advisory_name, a.grade_level, u.name as teacher_name, COUNT(aa.assignment_id) as student_count FROM {$this->advisory_table} a INNER JOIN {$this->users_table} u ON a.teacher_id = u.user_id LEFT JOIN {$this->assignment_table} aa ON a.advisory_id = aa.advisory_id GROUP BY a.advisory_id, a.advisory_name, a.grade_level, u.name ORDER BY {$orderByColumn} {$sort_order}";
+            $query = "SELECT a.advisory_id, a.advisory_name, a.grade_level, u.name as teacher_name,
+                             COUNT(aa.assignment_id) as student_count, a.created_at
+                      FROM {$this->advisory_table} a
+                      INNER JOIN {$this->users_table} u ON a.teacher_id = u.user_id
+                      LEFT JOIN {$this->assignment_table} aa ON a.advisory_id = aa.advisory_id
+                      GROUP BY a.advisory_id, a.advisory_name, a.grade_level, u.name, a.created_at
+                      ORDER BY {$orderByColumn} {$sort_order}";
             
             $stmt = $this->conn->prepare($query);
             $stmt->execute();
@@ -582,7 +733,12 @@ class AdvisoriesModel {
     
     public function getStudentsByAdvisory($advisory_id) {
         try {
-            $query = "SELECT aa.assignment_id, aa.student_id, s.name as student_name, s.lrn, aa.grade_level, aa.assigned_date FROM {$this->assignment_table} aa INNER JOIN {$this->users_table} s ON aa.student_id = s.user_id WHERE aa.advisory_id = :advisory_id ORDER BY aa.grade_level, s.name";
+            $query = "SELECT aa.assignment_id, aa.student_id, s.name as student_name, s.lrn,
+                             aa.grade_level, aa.assigned_date
+                      FROM {$this->assignment_table} aa
+                      INNER JOIN {$this->users_table} s ON aa.student_id = s.user_id
+                      WHERE aa.advisory_id = :advisory_id
+                      ORDER BY aa.grade_level, s.name";
             $stmt = $this->conn->prepare($query);
             $stmt->execute([':advisory_id' => $advisory_id]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
