@@ -30,7 +30,7 @@ $activeSchoolYear = $advisoriesController->getActiveSchoolYear();
             </div>
             <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                 <button onclick="openTeacherModal()"
-                    class="inline-flex items-center gap-2 bg-[#043915] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#055020] transition-colors shadow-sm">
+                    class="inline-flex items-center gap-2 bg-[#f8c922] text-[#043915] px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-yellow-300 transition-colors shadow-sm">
                     <i class="fas fa-user-plus"></i> Assign Teacher
                 </button>
                 <button onclick="openStudentModal()" id="assignStudentBtn"
@@ -46,9 +46,9 @@ $activeSchoolYear = $advisoriesController->getActiveSchoolYear();
 
     <!-- School Year Info Bar -->
     <?php if ($activeSchoolYear): ?>
-    <div class="mb-5 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 shadow-sm p-3 flex items-center justify-between gap-3">
+    <div class="mb-5 rounded-xl border border-green-200 shadow-sm p-3 flex items-center justify-between gap-3 w-95">
         <div class="flex items-center gap-2">
-            <i class="fas fa-calendar-check text-blue-600 text-sm"></i>
+            <i class="fas fa-calendar-check text-blue-600 text-lg"></i>
             <div>
                 <p class="text-xs font-bold text-blue-600">S.Y. <?= $activeSchoolYear['start_year'] ?> – <?= $activeSchoolYear['end_year'] ?></p>
             </div>
@@ -58,12 +58,15 @@ $activeSchoolYear = $advisoriesController->getActiveSchoolYear();
             class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1">
             <i class="fas fa-edit"></i> Edit
         </button>
+        <div>
+            <button onclick="toggleFilters()"><i class="fa-solid fa-filter"></i> Filter</button>
+        </div>
     </div>
     <?php endif; ?>
 
     <!-- Filters Bar -->
-    <div class="mb-6 bg-white rounded-2xl border border-gray-200 shadow-sm p-5 overflow-x-auto">
-        <div class="flex flex-wrap items-end gap-4 min-w-max md:min-w-0">
+    <div id="filterBars" class="mb-6 bg-white rounded-2xl border border-gray-200 shadow-sm p-5 overflow-x-auto hidden">
+        <div class="flex flex-wrap items-end justify-evenly gap-4 min-w-max md:min-w-0">
             <div class="min-w-[200px]">
                 <label class="block text-xs font-bold text-black mb-2"><i class="fas fa-search text-gray-400 mr-2"></i>Search</label>
                 <input type="text" id="searchInput" placeholder="Student, LRN, teacher…"
@@ -71,20 +74,20 @@ $activeSchoolYear = $advisoriesController->getActiveSchoolYear();
             </div>
             
             <div class="min-w-[150px]">
-                <label class="block text-xs font-bold text-black mb-2"><i class="fas fa-user-tie text-gray-400 mr-2"></i>Teacher Type</label>
+                <label class="block text-xs font-bold text-black mb-2"><i class="fas fa-user-tie text-gray-400 mr-2"></i>Category</label>
                 <select id="filterTeacherRole"
                     class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#043915]/30">
-                    <option value="">All Types</option>
-                    <option value="advisory">Advisory</option>
-                    <option value="subject">Subject</option>
+                    <option value="">All Student</option>
+                    <option value="advisory">Advisory Teacher</option>
+                    <option value="subject">Subject Teacher</option>
                 </select>
             </div>
 
             <div class="min-w-[120px]">
-                <label class="block text-xs font-bold text-black mb-2"><i class="fas fa-layer-group text-gray-400 mr-2"></i>Grade</label>
+                <label class="block text-xs font-bold text-black mb-2"><i class="fas fa-layer-group text-gray-400 mr-2"></i>Grade Level</label>
                 <select id="filterGrade"
                     class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#043915]/30">
-                    <option value="">All Grades</option>
+                    <option value="">All</option>
                     <option value="7">Grade 7</option>
                     <option value="8">Grade 8</option>
                     <option value="9">Grade 9</option>
@@ -93,7 +96,7 @@ $activeSchoolYear = $advisoriesController->getActiveSchoolYear();
             </div>
 
             <div class="min-w-[110px]">
-                <label class="block text-xs font-bold text-black mb-2"><i class="fas fa-arrow-up-down text-gray-400 mr-2"></i>Sort</label>
+                <label class="block text-xs font-bold text-black mb-2"><i class="fa-solid fa-sort text-gray-400 mr-2"></i>Sort</label>
                 <select id="sortName"
                     class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#043915]/30">
                     <option value="ASC">A to Z</option>
@@ -108,8 +111,8 @@ $activeSchoolYear = $advisoriesController->getActiveSchoolYear();
             </div>
 
             <button onclick="resetFilters()"
-                class="px-4 py-2.5 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-colors flex items-center gap-2 h-[42px]">
-                <i class="fas fa-redo text-sm"></i> Reset
+                class="px-4 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors flex items-center gap-2 h-[42px]">
+                <i class="fas fa-redo text-sm"></i> Reset Filter
             </button>
         </div>
     </div>
@@ -194,261 +197,352 @@ $activeSchoolYear = $advisoriesController->getActiveSchoolYear();
 </div>
 
 <!-- ================================================================ -->
-<!-- STUDENT PROFILE MODAL (Read-only view + Edit mode)               -->
+<!-- STUDENT PROFILE MODAL - BOX-BASED DESIGN                         -->
 <!-- ================================================================ -->
 <div id="studentProfileModal" class="fixed inset-0 z-[150] hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-3">
-    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col">
 
         <!-- Header -->
-        <div class="px-7 pt-6 pb-4 border-b border-gray-200 flex items-start justify-between shrink-0">
+        <div class="px-8 pt-7 pb-6 border-b border-gray-100 flex items-start justify-between shrink-0">
             <div>
-                <h2 class="text-lg font-bold text-black flex items-center gap-2"><i class="fas fa-user-graduate text-blue-600"></i><span id="profileModalTitle">Student Profile</span></h2>
-                <p class="text-xs text-gray-500 mt-1" id="profileModalSubtitle">Viewing student information</p>
+                <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3"><i class="fas fa-user-graduate text-blue-600 text-2xl"></i><span id="profileModalTitle">Student Profile</span></h2>
+                <p class="text-sm text-gray-500 mt-1.5" id="profileModalSubtitle">View detailed student information</p>
             </div>
-            <button onclick="closeStudentProfileModal()"
-                class="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-red-100 hover:text-red-600 text-gray-500 transition shrink-0 text-sm">
+            <button onclick="closeStudentProfileModal()" class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-red-100 hover:text-red-600 text-gray-500 transition shrink-0 text-lg">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <!-- Loading -->
+        <!-- Loading State -->
         <div id="profileLoadingState" class="hidden flex-1 flex items-center justify-center py-16">
             <div class="text-center">
-                <i class="fas fa-spinner fa-spin text-3xl text-gray-400 mb-3"></i>
-                <p class="text-sm text-gray-700">Loading…</p>
+                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-spinner fa-spin text-blue-600 text-lg"></i>
+                </div>
+                <p class="text-sm text-gray-600">Loading profile data…</p>
             </div>
         </div>
 
         <!-- Form Content -->
-        <div id="profileFormContent" class="flex-1 overflow-y-auto px-7 py-5 space-y-4">
+        <div id="profileFormContent" class="flex-1 overflow-y-auto px-8 py-6">
             <input type="hidden" id="profileStudentId">
             <input type="hidden" id="originalProfilePix" value="">
             <input type="hidden" id="profileEditMode" value="0">
 
-            <!-- Profile Picture - Bigger -->
-            <div class="flex justify-center mb-2">
-                <div class="w-32 h-32 bg-gray-100 rounded-full border-3 border-blue-200 flex items-center justify-center overflow-hidden relative shadow-md">
-                    <i class="fa-solid fa-user-graduate text-5xl text-gray-300" id="profileAvatarIcon"></i>
-                    <img id="profileAvatarImg" src="" alt="" class="hidden w-full h-full object-cover">
-                    <div id="profilePicOverlay" class="hidden absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer rounded-full" onclick="document.getElementById('profilePictureInput').click()">
-                        <i class="fas fa-camera text-white text-2xl"></i>
+            <!-- Profile Picture Box - FULL BOX, NO SIDE ICONS -->
+            <div class="mb-8">
+                <div class="flex justify-center">
+                    <div class="relative cursor-pointer" onclick="document.getElementById('profilePictureInput').click()">
+                        <div class="w-32 h-32 bg-gradient-to-br from-blue-100 to-blue-50 rounded-2xl border-3 border-blue-200 flex items-center justify-center overflow-hidden shadow-md transition-all hover:scale-105">
+                            <img id="profileAvatarImg" src="" alt="" class="w-full h-full object-cover">
+                        </div>
+                        <div id="profilePicOverlay" class="hidden absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center transition-all hover:bg-black/60">
+                            <div class="text-center">
+                                <i class="fas fa-camera text-white text-3xl"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             <input type="file" id="profilePictureInput" class="hidden" accept="image/jpeg,image/png,image/webp" onchange="handleProfilePictureChange(event)">
 
-            <!-- Name Fields -->
-            <div class="grid grid-cols-3 gap-3">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">First Name</label>
-                    <input type="text" id="profileFirstName" placeholder="First Name" readonly
-                        class="profile-field w-full border border-gray-300 bg-gray-50 rounded-lg px-3 py-2 text-sm text-black outline-none focus:border-[#043915] focus:ring-1 focus:ring-[#043915]/30 focus:bg-white transition cursor-default">
+            <!-- Personal Information Section -->
+            <div class="mb-6">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4"><i class="fas fa-user mr-2"></i>Personal Information</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">First Name</label>
+                        <input type="text" id="profileFirstName" placeholder="First Name" readonly
+                            class="profile-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-blue-500 transition py-1 cursor-default">
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Last Name</label>
+                        <input type="text" id="profileLastName" placeholder="Last Name" readonly
+                            class="profile-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-blue-500 transition py-1 cursor-default">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Last Name</label>
-                    <input type="text" id="profileLastName" placeholder="Last Name" readonly
-                        class="profile-field w-full border border-gray-300 bg-gray-50 rounded-lg px-3 py-2 text-sm text-black outline-none focus:border-[#043915] focus:ring-1 focus:ring-[#043915]/30 focus:bg-white transition cursor-default">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">M.I.</label>
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 mt-4">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Middle Initial</label>
                     <input type="text" id="profileMI" maxlength="3" placeholder="M.I." readonly
-                        class="profile-field w-full border border-gray-300 bg-gray-50 rounded-lg px-3 py-2 text-sm text-black outline-none focus:border-[#043915] focus:ring-1 focus:ring-[#043915]/30 focus:bg-white transition cursor-default">
+                        class="profile-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-blue-500 transition py-1 cursor-default">
                 </div>
             </div>
 
-            <!-- LRN + Contact -->
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">LRN</label>
-                    <input type="text" id="profileLrn" maxlength="12" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="100123456789" readonly
-                        class="profile-field w-full border border-gray-300 bg-gray-50 rounded-lg px-3 py-2 text-sm text-black outline-none focus:border-[#043915] focus:ring-1 focus:ring-[#043915]/30 focus:bg-white transition font-mono cursor-default">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Contact</label>
-                    <input type="text" id="profileContact" maxlength="11" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="09XXXXXXXXX" readonly
-                        class="profile-field w-full border border-gray-300 bg-gray-50 rounded-lg px-3 py-2 text-sm text-black outline-none focus:border-[#043915] focus:ring-1 focus:ring-[#043915]/30 focus:bg-white transition font-mono cursor-default">
+            <!-- Academic Information Section -->
+            <div class="mb-6">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4"><i class="fas fa-book mr-2"></i>Academic Details</h3>
+                <div class="grid grid-cols-3 gap-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-200">
+                    <div>
+                        <p class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Grade Level</p>
+                        <p id="profileYearLevel" class="text-lg font-bold text-gray-900">—</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Section</p>
+                        <p id="profileSection" class="text-sm font-bold text-gray-900 truncate">—</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Adviser</p>
+                        <p id="profileAdviser" class="text-sm font-bold text-gray-900 truncate">—</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- Address + Guardian -->
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Home Address</label>
+            <!-- Contact Information Section -->
+            <div class="mb-6">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4"><i class="fas fa-phone mr-2"></i>Contact Information</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">LRN</label>
+                        <input type="text" id="profileLrn" maxlength="12" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="100123456789" readonly
+                            class="profile-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-blue-500 transition font-mono py-1 cursor-default">
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Phone Number</label>
+                        <input type="text" id="profileContact" maxlength="11" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="09XXXXXXXXX" readonly
+                            class="profile-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-blue-500 transition font-mono py-1 cursor-default">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Address Section -->
+            <div class="mb-6">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4"><i class="fas fa-map-pin mr-2"></i>Address</h3>
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Home Address</label>
                     <input type="text" id="profileAddress" placeholder="Street, Barangay, City" readonly
-                        class="profile-field w-full border border-gray-300 bg-gray-50 rounded-lg px-3 py-2 text-sm text-black outline-none focus:border-[#043915] focus:ring-1 focus:ring-[#043915]/30 focus:bg-white transition cursor-default">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Parent/Guardian</label>
-                    <input type="text" id="profileGuardianName" placeholder="Maria Santos" readonly
-                        class="profile-field w-full border border-gray-300 bg-gray-50 rounded-lg px-3 py-2 text-sm text-black outline-none focus:border-[#043915] focus:ring-1 focus:ring-[#043915]/30 focus:bg-white transition cursor-default">
+                        class="profile-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-blue-500 transition py-1 cursor-default">
                 </div>
             </div>
 
-            <!-- Guardian Contact -->
-            <div>
-                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Guardian Contact</label>
-                <input type="text" id="profileGuardianContact" maxlength="11" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="09XXXXXXXXX" readonly
-                    class="profile-field w-full border border-gray-300 bg-gray-50 rounded-lg px-3 py-2 text-sm text-black outline-none focus:border-[#043915] focus:ring-1 focus:ring-[#043915]/30 focus:bg-white transition font-mono cursor-default">
-            </div>
-
-            <!-- Class Info (Always Read Only) -->
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 grid grid-cols-3 gap-3">
-                <div>
-                    <p class="text-xs font-bold text-gray-500 mb-1">Year Level</p>
-                    <p id="profileYearLevel" class="text-sm font-bold text-gray-900">—</p>
-                </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-500 mb-1">Section</p>
-                    <p id="profileSection" class="text-sm font-bold text-gray-900">—</p>
-                </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-500 mb-1">Adviser</p>
-                    <p id="profileAdviser" class="text-sm font-bold text-gray-900">—</p>
+            <!-- Guardian Section -->
+            <div class="mb-8">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4"><i class="fas fa-shield-alt mr-2"></i>Guardian Information</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Parent/Guardian Name</label>
+                        <input type="text" id="profileGuardianName" placeholder="Guardian Name" readonly
+                            class="profile-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-blue-500 transition py-1 cursor-default">
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Guardian Contact</label>
+                        <input type="text" id="profileGuardianContact" maxlength="11" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" placeholder="09XXXXXXXXX" readonly
+                            class="profile-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-blue-500 transition font-mono py-1 cursor-default">
+                    </div>
                 </div>
             </div>
 
             <!-- History Button -->
             <button onclick="openStudentHistoryModal(document.getElementById('profileStudentId').value)" 
-                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
-                <i class="fas fa-history"></i> History
+                class="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-md text-sm flex items-center justify-center gap-2 mb-4">
+                <i class="fas fa-history"></i> View Academic History
             </button>
         </div>
 
         <!-- Footer -->
-        <div class="px-7 py-4 border-t border-gray-200 flex gap-2 shrink-0">
-            <div id="profileViewButtons" class="flex gap-2 w-full">
-                <button onclick="enableProfileEditMode()" class="flex-1 bg-[#043915] hover:bg-[#055020] text-white font-bold py-2 rounded-lg transition-colors text-sm">Update</button>
-                <button onclick="closeStudentProfileModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-black font-bold py-2 rounded-lg transition-colors text-sm">Close</button>
+        <div class="px-8 py-5 border-t border-gray-100 flex gap-3 shrink-0 bg-gray-50">
+            <div id="profileViewButtons" class="flex gap-3 w-full">
+                <button onclick="enableProfileEditMode()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition-all text-sm shadow-sm">Edit Profile</button>
+                <button onclick="closeStudentProfileModal()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2.5 rounded-lg transition-all text-sm">Close</button>
             </div>
-            <div id="profileEditButtons" class="hidden flex gap-2 w-full">
-                <button onclick="saveStudentProfile()" class="flex-1 bg-[#043915] hover:bg-[#055020] text-white font-bold py-2 rounded-lg transition-colors text-sm">Save</button>
-                <button onclick="cancelProfileEdit()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-black font-bold py-2 rounded-lg transition-colors text-sm">Cancel</button>
+            <div id="profileEditButtons" class="hidden flex gap-3 w-full">
+                <button onclick="saveStudentProfile()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg transition-all text-sm shadow-sm flex items-center justify-center gap-2"><i class="fas fa-save"></i> Save Changes</button>
+                <button onclick="cancelProfileEdit()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2.5 rounded-lg transition-all text-sm">Cancel</button>
             </div>
         </div>
     </div>
 </div>
 
 <!-- ================================================================ -->
-<!-- TEACHER PROFILE MODAL (Read-only + Edit mode)                    -->
+<!-- TEACHER PROFILE MODAL - BOX-BASED DESIGN                        -->
 <!-- ================================================================ -->
 <div id="teacherProfileModal" class="fixed inset-0 z-[150] hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-2">
-    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col">
 
         <!-- Header -->
-        <div class="px-8 pt-7 pb-5 border-b border-gray-200 flex items-start justify-between shrink-0">
+        <div class="px-8 pt-7 pb-6 border-b border-gray-100 flex items-start justify-between shrink-0 bg-gradient-to-r from-purple-50 to-indigo-50">
             <div>
-                <h2 class="text-xl font-bold text-black flex items-center gap-3"><i class="fas fa-user-tie text-purple-600"></i><span id="teacherModalTitle">Faculty Profile</span></h2>
-                <p class="text-sm text-gray-500 mt-0.5" id="teacherModalSubtitle">Viewing teacher information</p>
+                <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3"><i class="fas fa-user-tie text-purple-600 text-2xl"></i><span id="teacherModalTitle">Faculty Profile</span></h2>
+                <p class="text-sm text-gray-500 mt-1.5" id="teacherModalSubtitle">View detailed teacher information</p>
             </div>
-            <button onclick="closeTeacherProfileModal()"
-                class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-red-100 hover:text-red-600 text-gray-500 transition shrink-0 text-lg">
+            <button onclick="closeTeacherProfileModal()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white hover:bg-red-100 hover:text-red-600 text-gray-500 transition shrink-0 text-lg shadow-sm">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <!-- Loading -->
+        <!-- Loading State -->
         <div id="teacherLoadingState" class="hidden flex-1 flex items-center justify-center py-20">
             <div class="text-center">
-                <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
-                <p class="text-base text-gray-700">Loading teacher info…</p>
+                <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-spinner fa-spin text-purple-600 text-lg"></i>
+                </div>
+                <p class="text-sm text-gray-600">Loading faculty profile…</p>
             </div>
         </div>
 
-        <!-- Form -->
-        <div id="teacherFormContent" class="flex-1 overflow-y-auto px-8 py-6 space-y-5">
+        <!-- Form Content -->
+        <div id="teacherFormContent" class="flex-1 overflow-y-auto px-8 py-6">
             <input type="hidden" id="teacherRecordId">
             <input type="hidden" id="originalTeacherPix" value="">
             <input type="hidden" id="teacherEditMode" value="0">
 
-            <!-- Profile Picture -->
-            <div class="flex justify-center">
-                <div class="w-24 h-24 bg-gray-100 rounded-full border-2 border-gray-200 flex items-center justify-center overflow-hidden relative" id="teacherPicWrapper">
-                    <i class="fa-solid fa-user-tie text-4xl text-gray-300" id="teacherAvatarIcon"></i>
-                    <img id="teacherAvatarImg" src="" alt="" class="hidden w-full h-full object-cover">
-                    <div id="teacherPicOverlay" class="hidden absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer rounded-full"
-                        onclick="document.getElementById('teacherPictureInput').click()">
-                        <i class="fas fa-camera text-white text-xl"></i>
+            <!-- Profile Picture Box - FULL BOX, NO SIDE ICONS -->
+            <div class="mb-8">
+                <div class="flex justify-center">
+                    <div class="relative cursor-pointer" onclick="document.getElementById('teacherPictureInput').click()">
+                        <div class="w-32 h-32 bg-gradient-to-br from-purple-100 to-indigo-50 rounded-2xl border-3 border-purple-200 flex items-center justify-center overflow-hidden shadow-md transition-all hover:scale-105">
+                            <img id="teacherAvatarImg" src="" alt="" class="w-full h-full object-cover">
+                        </div>
+                        <div id="teacherPicOverlay" class="hidden absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center transition-all hover:bg-black/60">
+                            <div class="text-center">
+                                <i class="fas fa-camera text-white text-3xl"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             <input type="file" id="teacherPictureInput" class="hidden" accept="image/jpeg,image/png,image/webp" onchange="handleTeacherPictureChange(event)">
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1"><i class="fas fa-id-card mr-1"></i>Teacher Number</label>
-                    <input type="text" id="teacherIdField" placeholder="T-2024-001" readonly
-                        class="teacher-field w-full border-2 border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-black outline-none focus:border-[#1e1b4b] focus:ring-2 focus:ring-[#1e1b4b]/20 focus:bg-white transition font-mono cursor-default">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1"><i class="fas fa-building mr-1"></i>Department</label>
-                    <select id="teacherDeptField" disabled
-                        class="teacher-field w-full border-2 border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-black outline-none focus:border-[#1e1b4b] focus:ring-2 focus:ring-[#1e1b4b]/20 focus:bg-white transition cursor-default">
-                        <option value="">Select Department</option>
-                        <option value="Mathematics">Mathematics</option>
-                        <option value="Science">Science</option>
-                        <option value="English">English</option>
-                        <option value="Filipino">Filipino</option>
-                        <option value="MAPEH">MAPEH</option>
-                        <option value="ICT">ICT</option>
-                    </select>
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"><i class="fas fa-person-chalkboard mr-1"></i>Professional Name</label>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input type="text" id="teacherFirstName" placeholder="First Name" readonly
-                        class="teacher-field border-2 border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-black outline-none focus:border-[#1e1b4b] focus:ring-2 focus:ring-[#1e1b4b]/20 focus:bg-white transition cursor-default">
-                    <input type="text" id="teacherLastName" placeholder="Last Name" readonly
-                        class="teacher-field border-2 border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-black outline-none focus:border-[#1e1b4b] focus:ring-2 focus:ring-[#1e1b4b]/20 focus:bg-white transition cursor-default">
-                    <input type="text" id="teacherSuffix" placeholder="e.g. LPT, PhD" readonly
-                        class="teacher-field border-2 border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-black outline-none focus:border-[#1e1b4b] focus:ring-2 focus:ring-[#1e1b4b]/20 focus:bg-white transition cursor-default">
+            <!-- Professional Information Section -->
+            <div class="mb-6">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4"><i class="fas fa-briefcase mr-2"></i>Professional Details</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Teacher ID</label>
+                        <input type="text" id="teacherIdField" placeholder="T-2024-001" readonly
+                            class="teacher-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-purple-500 transition font-mono py-1 cursor-default">
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Department</label>
+                        <select id="teacherDeptField" disabled
+                            class="teacher-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-purple-500 transition py-1 cursor-default">
+                            <option value="">Select Department</option>
+                            <option value="Mathematics">Mathematics</option>
+                            <option value="Science">Science</option>
+                            <option value="English">English</option>
+                            <option value="Filipino">Filipino</option>
+                            <option value="MAPEH">MAPEH</option>
+                            <option value="ICT">ICT</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1"><i class="fas fa-envelope mr-1"></i>Email</label>
-                    <input type="email" id="teacherEmail" placeholder="teacher@school.edu.ph" readonly
-                        class="teacher-field w-full border-2 border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-black outline-none focus:border-[#1e1b4b] focus:ring-2 focus:ring-[#1e1b4b]/20 focus:bg-white transition cursor-default">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1"><i class="fas fa-phone mr-1"></i>Contact</label>
-                    <input type="text" id="teacherContact" maxlength="11" placeholder="09XXXXXXXXX" readonly
-                        class="teacher-field w-full border-2 border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-black outline-none focus:border-[#1e1b4b] focus:ring-2 focus:ring-[#1e1b4b]/20 focus:bg-white transition font-mono cursor-default">
+            <!-- Personal Information Section -->
+            <div class="mb-6">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4"><i class="fas fa-user mr-2"></i>Full Name</h3>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">First Name</label>
+                        <input type="text" id="teacherFirstName" placeholder="First Name" readonly
+                            class="teacher-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-purple-500 transition py-1 cursor-default">
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Last Name</label>
+                        <input type="text" id="teacherLastName" placeholder="Last Name" readonly
+                            class="teacher-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-purple-500 transition py-1 cursor-default">
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Suffix</label>
+                        <input type="text" id="teacherSuffix" placeholder="e.g. LPT, PhD" readonly
+                            class="teacher-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-purple-500 transition py-1 cursor-default">
+                    </div>
                 </div>
             </div>
 
-            <div>
-                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1"><i class="fas fa-star mr-1"></i>Specialization</label>
-                <textarea id="teacherSpecialization" rows="2" placeholder="e.g. Advanced Algebra, Physics, Robotics" readonly
-                    class="teacher-field w-full border-2 border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-black outline-none focus:border-[#1e1b4b] focus:ring-2 focus:ring-[#1e1b4b]/20 focus:bg-white transition resize-none cursor-default"></textarea>
+            <!-- Contact Information Section -->
+            <div class="mb-6">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4"><i class="fas fa-phone mr-2"></i>Contact Information</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email Address</label>
+                        <input type="email" id="teacherEmail" placeholder="teacher@school.edu.ph" readonly
+                            class="teacher-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-purple-500 transition py-1 cursor-default">
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Phone Number</label>
+                        <input type="text" id="teacherContact" maxlength="11" placeholder="09XXXXXXXXX" readonly
+                            class="teacher-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-purple-500 transition font-mono py-1 cursor-default">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Specialization Section -->
+            <div class="mb-8">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4"><i class="fas fa-star mr-2"></i>Specialization</h3>
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <textarea id="teacherSpecialization" rows="3" placeholder="e.g. Advanced Algebra, Physics, Robotics, Literature" readonly
+                        class="teacher-field w-full bg-white text-gray-900 text-sm font-medium outline-none border-b-2 border-transparent focus:border-purple-500 transition resize-none py-1 cursor-default"></textarea>
+                </div>
             </div>
         </div>
 
         <!-- Footer -->
-        <div class="px-8 py-5 border-t border-gray-200 flex gap-3 shrink-0">
+        <div class="px-8 py-5 border-t border-gray-100 flex gap-3 shrink-0 bg-gray-50">
             <div id="teacherViewButtons" class="flex gap-3 w-full">
-                <button onclick="enableTeacherEditMode()"
-                    class="flex-1 bg-[#1e1b4b] hover:bg-[#2e2a75] text-white font-bold py-3 rounded-xl transition-colors text-sm flex items-center justify-center gap-2">
-                    <i class="fas fa-edit"></i> Update
-                </button>
-                <button onclick="closeTeacherProfileModal()"
-                    class="flex-1 bg-gray-200 hover:bg-gray-300 text-black font-bold py-3 rounded-xl transition-colors text-sm">
-                    Close
-                </button>
+                <button onclick="enableTeacherEditMode()" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-lg transition-all text-sm shadow-sm">Edit Profile</button>
+                <button onclick="closeTeacherProfileModal()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2.5 rounded-lg transition-all text-sm">Close</button>
             </div>
             <div id="teacherEditButtons" class="hidden flex gap-3 w-full">
-                <button onclick="saveTeacherProfile()"
-                    class="flex-1 bg-[#1e1b4b] hover:bg-[#2e2a75] text-white font-bold py-3 rounded-xl transition-colors text-sm flex items-center justify-center gap-2">
-                    <i class="fas fa-save"></i> Save Changes
-                </button>
-                <button onclick="cancelTeacherEdit()"
-                    class="flex-1 bg-gray-200 hover:bg-gray-300 text-black font-bold py-3 rounded-xl transition-colors text-sm">
-                    Cancel
-                </button>
+                <button onclick="saveTeacherProfile()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg transition-all text-sm shadow-sm flex items-center justify-center gap-2"><i class="fas fa-save"></i> Save Changes</button>
+                <button onclick="cancelTeacherEdit()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2.5 rounded-lg transition-all text-sm">Cancel</button>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- ASSIGN TEACHER MODAL                                              -->
+<!-- ================================================================ -->
+<div id="teacherModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
+
+        <div class="bg-[#043915] px-8 py-6">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2"><i class="fas fa-user-plus"></i>Assign Teacher Role</h2>
+            <p class="text-sm text-green-300 mt-1"><i class="fas fa-info-circle mr-1"></i>Add a teacher as advisory or subject teacher</p>
+        </div>
+
+        <form id="assignTeacherForm" onsubmit="submitTeacherAssignment(event)" class="p-7 space-y-5">
+            <input type="hidden" name="action" value="assign_teacher">
+
+            <div>
+                <label class="block text-sm font-bold text-black mb-2"><i class="fas fa-user-tie text-green-600 mr-2"></i>Teacher</label>
+                <select name="teacher_id" id="teacherSelect" required class="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-base bg-white focus:outline-none focus:ring-2 focus:ring-[#043915]/30 focus:border-[#043915] transition-all text-black font-medium">
+                    <option value="">Select a teacher…</option>
+                    <?php foreach ($teachers as $teacher): ?>
+                        <option value="<?= $teacher['user_id'] ?>"><?= htmlspecialchars($teacher['name']) ?> — <?= htmlspecialchars($teacher['email']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-black mb-2"><i class="fas fa-briefcase text-green-600 mr-2"></i>Role</label>
+                <select name="role_type" id="teacherRoleType" required class="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-base bg-white focus:outline-none focus:ring-2 focus:ring-[#043915]/30 focus:border-[#043915] transition-all text-black font-medium" onchange="toggleAdvisoryFields()">
+                    <option value="">Select role…</option>
+                    <option value="subject">Subject Teacher</option>
+                    <option value="advisory">Advisory Teacher</option>
+                </select>
+            </div>
+
+            <div id="advisoryFields" class="hidden bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-5 space-y-4">
+                <p class="text-sm font-bold text-emerald-900 uppercase tracking-wider"><i class="fas fa-door-open mr-2"></i>Advisory Class Details</p>
+                <input type="text" name="advisory_name" id="advisoryNameInput" placeholder="e.g. Diamond 7-A, Emerald 8-B"
+                    class="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#043915]/30 focus:border-[#043915] transition-all text-black">
+                <select name="grade_level" id="advisoryGradeLevelInput" class="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-base bg-white focus:outline-none focus:ring-2 focus:ring-[#043915]/30 focus:border-[#043915] transition-all text-black font-medium">
+                    <option value="">Select grade…</option>
+                    <option value="7">Grade 7</option>
+                    <option value="8">Grade 8</option>
+                    <option value="9">Grade 9</option>
+                    <option value="10">Grade 10</option>
+                </select>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="closeTeacherModal()" class="flex-1 border-2 border-gray-300 text-black font-bold py-3 rounded-xl hover:bg-gray-50 transition-colors text-base">Cancel</button>
+                <button type="submit" class="flex-1 bg-[#f8c922] text-[#043915] font-bold py-3 rounded-xl hover:bg-yellow-300 transition-colors shadow-lg text-base flex items-center justify-center gap-2">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -560,62 +654,8 @@ $activeSchoolYear = $advisoriesController->getActiveSchoolYear();
 </div>
 
 <!-- ================================================================ -->
-<!-- ASSIGN TEACHER MODAL                                              -->
+<!-- REASSIGN MODAL                                                   -->
 <!-- ================================================================ -->
-<div id="teacherModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
-    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
-
-        <div class="bg-[#043915] px-8 py-6">
-            <h2 class="text-xl font-bold text-white flex items-center gap-2"><i class="fas fa-user-plus"></i>Assign Teacher Role</h2>
-            <p class="text-sm text-green-300 mt-1"><i class="fas fa-info-circle mr-1"></i>Add a teacher as advisory or subject teacher</p>
-        </div>
-
-        <form id="assignTeacherForm" onsubmit="submitTeacherAssignment(event)" class="p-7 space-y-5">
-            <input type="hidden" name="action" value="assign_teacher">
-
-            <div>
-                <label class="block text-sm font-bold text-black mb-2"><i class="fas fa-user-tie text-green-600 mr-2"></i>Teacher</label>
-                <select name="teacher_id" id="teacherSelect" required class="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-base bg-white focus:outline-none focus:ring-2 focus:ring-[#043915]/30 focus:border-[#043915] transition-all text-black font-medium">
-                    <option value="">Select a teacher…</option>
-                    <?php foreach ($teachers as $teacher): ?>
-                        <option value="<?= $teacher['user_id'] ?>"><?= htmlspecialchars($teacher['name']) ?> — <?= htmlspecialchars($teacher['email']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-sm font-bold text-black mb-2"><i class="fas fa-briefcase text-green-600 mr-2"></i>Role</label>
-                <select name="role_type" id="teacherRoleType" required class="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-base bg-white focus:outline-none focus:ring-2 focus:ring-[#043915]/30 focus:border-[#043915] transition-all text-black font-medium" onchange="toggleAdvisoryFields()">
-                    <option value="">Select role…</option>
-                    <option value="subject">Subject Teacher</option>
-                    <option value="advisory">Advisory Teacher</option>
-                </select>
-            </div>
-
-            <div id="advisoryFields" class="hidden bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-5 space-y-4">
-                <p class="text-sm font-bold text-emerald-900 uppercase tracking-wider"><i class="fas fa-door-open mr-2"></i>Advisory Class Details</p>
-                <input type="text" name="advisory_name" id="advisoryNameInput" placeholder="e.g. Diamond 7-A, Emerald 8-B"
-                    class="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#043915]/30 focus:border-[#043915] transition-all text-black">
-                <select name="grade_level" id="advisoryGradeLevelInput" class="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-base bg-white focus:outline-none focus:ring-2 focus:ring-[#043915]/30 focus:border-[#043915] transition-all text-black font-medium">
-                    <option value="">Select grade…</option>
-                    <option value="7">Grade 7</option>
-                    <option value="8">Grade 8</option>
-                    <option value="9">Grade 9</option>
-                    <option value="10">Grade 10</option>
-                </select>
-            </div>
-
-            <div class="flex gap-3 pt-2">
-                <button type="button" onclick="closeTeacherModal()" class="flex-1 border-2 border-gray-300 text-black font-bold py-3 rounded-xl hover:bg-gray-50 transition-colors text-base">Cancel</button>
-                <button type="submit" class="flex-1 bg-[#f8c922] text-[#043915] font-bold py-3 rounded-xl hover:bg-yellow-300 transition-colors shadow-lg text-base flex items-center justify-center gap-2">
-                    <i class="fas fa-save"></i> Save
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Reassign Modal -->
 <div id="reassignModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
     <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
         <div class="px-8 py-6 border-b border-gray-200">
@@ -642,7 +682,9 @@ $activeSchoolYear = $advisoriesController->getActiveSchoolYear();
     </div>
 </div>
 
-<!-- Remove Advisory Modal -->
+<!-- ================================================================ -->
+<!-- REMOVE ADVISORY MODAL                                             -->
+<!-- ================================================================ -->
 <div id="removeAdvisoryModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
     <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-8 text-center">
         <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -663,7 +705,9 @@ $activeSchoolYear = $advisoriesController->getActiveSchoolYear();
     </div>
 </div>
 
-<!-- Convert Teacher Modal -->
+<!-- ================================================================ -->
+<!-- CONVERT TEACHER MODAL                                             -->
+<!-- ================================================================ -->
 <div id="convertTeacherModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
     <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-8 text-center">
         <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -684,7 +728,9 @@ $activeSchoolYear = $advisoriesController->getActiveSchoolYear();
     </div>
 </div>
 
-<!-- View Advisory Modal -->
+<!-- ================================================================ -->
+<!-- VIEW ADVISORY MODAL                                               -->
+<!-- ================================================================ -->
 <div id="viewAdvisoryModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
     <div class="bg-white w-full max-w-5xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
         <div class="px-8 py-6 border-b border-gray-200 flex items-start justify-between shrink-0">

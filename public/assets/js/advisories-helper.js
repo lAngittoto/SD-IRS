@@ -68,7 +68,6 @@ function renderPagination(totalItems) {
   }
 }
 
-
 function changePage(page) {
   const totalPages = Math.max(1, Math.ceil(allData.length / ITEMS_PER_PAGE));
   if (page < 1 || page > totalPages) return;
@@ -130,60 +129,7 @@ function submitSchoolYearUpdate(event) {
 }
 
 // ============================================================
-// READ-ONLY → EDIT MODE for STUDENT PROFILE
-// ============================================================
-function enableProfileEditMode() {
-  document.querySelectorAll(".profile-field").forEach(el => {
-    el.removeAttribute("readonly");
-    el.disabled = false;
-    el.classList.remove("bg-gray-50", "cursor-default");
-    el.classList.add("bg-white", "cursor-text");
-  });
-  const overlay = document.getElementById("profilePicOverlay");
-  if (overlay) overlay.classList.remove("hidden");
-
-  document.getElementById("profileViewButtons").classList.add("hidden");
-  document.getElementById("profileEditButtons").classList.remove("hidden");
-  document.getElementById("profileEditButtons").classList.add("flex");
-  document.getElementById("profileModalTitle").textContent = "Edit Student Record";
-  document.getElementById("profileModalSubtitle").textContent = "Make changes, then click Save Changes.";
-  document.getElementById("profileEditMode").value = "1";
-}
-
-function cancelProfileEdit() {
-  const studentId = document.getElementById("profileStudentId").value;
-  openStudentProfileModal(studentId);
-}
-
-// ============================================================
-// READ-ONLY → EDIT MODE for TEACHER PROFILE
-// ============================================================
-function enableTeacherEditMode() {
-  document.querySelectorAll(".teacher-field").forEach(el => {
-    el.removeAttribute("readonly");
-    el.disabled = false;
-    el.classList.remove("bg-gray-50", "cursor-default");
-    el.classList.add("bg-white", "cursor-text");
-  });
-  const overlay = document.getElementById("teacherPicOverlay");
-  if (overlay) overlay.classList.remove("hidden");
-
-  document.getElementById("teacherViewButtons").classList.add("hidden");
-  document.getElementById("teacherEditButtons").classList.remove("hidden");
-  document.getElementById("teacherEditButtons").classList.add("flex");
-  document.getElementById("teacherModalTitle").textContent = "Edit Faculty Record";
-  document.getElementById("teacherModalSubtitle").textContent = "Make changes, then click Save Changes.";
-  document.getElementById("teacherEditMode").value = "1";
-}
-
-function cancelTeacherEdit() {
-  const advisoryId = document.getElementById("teacherRecordId").dataset.advisoryId;
-  closeTeacherProfileModal();
-  if (advisoryId) setTimeout(() => openTeacherProfileModal(advisoryId), 100);
-}
-
-// ============================================================
-// STUDENT PROFILE MODAL
+// STUDENT PROFILE MODAL - MODERN BOX DESIGN (NO CIRCLES)
 // ============================================================
 function openStudentProfileModal(studentId) {
   const modal = document.getElementById("studentProfileModal");
@@ -238,7 +184,7 @@ function setProfileReadOnly() {
   editBtns.classList.add("hidden");
   editBtns.classList.remove("flex");
   document.getElementById("profileModalTitle").textContent   = "Student Profile";
-  document.getElementById("profileModalSubtitle").textContent = "Viewing student information";
+  document.getElementById("profileModalSubtitle").textContent = "View detailed student information";
 }
 
 function populateStudentProfile(student) {
@@ -286,6 +232,29 @@ function closeStudentProfileModal() {
   document.body.style.overflow = "auto";
   const fi = document.getElementById("profilePictureInput");
   if (fi) fi.value = "";
+}
+
+function enableProfileEditMode() {
+  document.querySelectorAll(".profile-field").forEach(el => {
+    el.removeAttribute("readonly");
+    el.disabled = false;
+    el.classList.remove("bg-gray-50", "cursor-default");
+    el.classList.add("bg-white", "cursor-text");
+  });
+  const overlay = document.getElementById("profilePicOverlay");
+  if (overlay) overlay.classList.remove("hidden");
+
+  document.getElementById("profileViewButtons").classList.add("hidden");
+  document.getElementById("profileEditButtons").classList.remove("hidden");
+  document.getElementById("profileEditButtons").classList.add("flex");
+  document.getElementById("profileModalTitle").textContent = "Edit Student Record";
+  document.getElementById("profileModalSubtitle").textContent = "Update student information and save changes.";
+  document.getElementById("profileEditMode").value = "1";
+}
+
+function cancelProfileEdit() {
+  const studentId = document.getElementById("profileStudentId").value;
+  openStudentProfileModal(studentId);
 }
 
 function handleProfilePictureChange(event) {
@@ -377,7 +346,7 @@ function displayStudentHistory(history) {
   modal.id        = "studentHistoryModal";
   modal.className = "fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4";
   modal.innerHTML = `
-    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
       <div class="px-7 pt-6 pb-5 border-b border-gray-200 flex items-start justify-between shrink-0">
         <div>
           <h2 class="text-lg font-bold text-black flex items-center gap-3"><i class="fas fa-history text-indigo-600"></i>Academic History</h2>
@@ -419,7 +388,7 @@ function displayStudentHistory(history) {
 }
 
 // ============================================================
-// TEACHER PROFILE MODAL
+// TEACHER PROFILE MODAL - MODERN BOX DESIGN (NO CIRCLES)
 // ============================================================
 function openTeacherProfileModal(advisoryId) {
   const modal = document.getElementById("teacherProfileModal");
@@ -473,7 +442,7 @@ function setTeacherReadOnly() {
   editBtns.classList.add("hidden");
   editBtns.classList.remove("flex");
   document.getElementById("teacherModalTitle").textContent    = "Faculty Profile";
-  document.getElementById("teacherModalSubtitle").textContent  = "Viewing teacher information";
+  document.getElementById("teacherModalSubtitle").textContent  = "View detailed teacher information";
 }
 
 function populateTeacherProfile(teacher) {
@@ -522,6 +491,30 @@ function closeTeacherProfileModal() {
   document.body.style.overflow = "auto";
   const fi = document.getElementById("teacherPictureInput");
   if (fi) fi.value = "";
+}
+
+function enableTeacherEditMode() {
+  document.querySelectorAll(".teacher-field").forEach(el => {
+    el.removeAttribute("readonly");
+    el.disabled = false;
+    el.classList.remove("bg-gray-50", "cursor-default");
+    el.classList.add("bg-white", "cursor-text");
+  });
+  const overlay = document.getElementById("teacherPicOverlay");
+  if (overlay) overlay.classList.remove("hidden");
+
+  document.getElementById("teacherViewButtons").classList.add("hidden");
+  document.getElementById("teacherEditButtons").classList.remove("hidden");
+  document.getElementById("teacherEditButtons").classList.add("flex");
+  document.getElementById("teacherModalTitle").textContent = "Edit Faculty Record";
+  document.getElementById("teacherModalSubtitle").textContent = "Update teacher information and save changes.";
+  document.getElementById("teacherEditMode").value = "1";
+}
+
+function cancelTeacherEdit() {
+  const advisoryId = document.getElementById("teacherRecordId").dataset.advisoryId;
+  closeTeacherProfileModal();
+  if (advisoryId) setTimeout(() => openTeacherProfileModal(advisoryId), 100);
 }
 
 function handleTeacherPictureChange(event) {
@@ -1217,7 +1210,7 @@ function executePromotion() {
       closeViewAdvisoryModal();
       const m = document.createElement("div");
       m.className = "fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[300] backdrop-blur-md p-4";
-      m.innerHTML = `<div class="bg-white w-full max-w-sm rounded-3xl p-10 shadow-2xl text-center">
+      m.innerHTML = `<div class="bg-white w-full max-w-sm rounded-2xl p-10 shadow-2xl text-center">
         <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5"><i class="fas fa-check-circle text-emerald-600 text-2xl"></i></div>
         <h2 class="text-xl font-black text-slate-800 mb-2">${data.success ? 'Promotion Successful' : 'Partial Success'}</h2>
         <p class="text-sm text-slate-500">${data.message}</p>
@@ -1277,4 +1270,9 @@ function checkAdvisoryAvailability() {
   const has = sel && sel.options.length > 1;
   document.getElementById("assignStudentBtn")?.classList.toggle("hidden", !has);
   document.getElementById("noAdvisoryMessage")?.classList.toggle("hidden", has);
+}
+
+function toggleFilters() {
+  const filters = document.getElementById("filterBars");
+  filters.classList.toggle("hidden");
 }

@@ -1,23 +1,18 @@
 <?php
-
 $page = $_GET['page'] ?? '';
-
 if ($page === '') {
     header('Location: home-page');
     exit;
 }
 
-$authPages = ['home-page', 'log-in', 'authenticate'];
-
+// ✅ UPDATED - Added 'change-credentials-otp' sa authPages
+$authPages = ['home-page', 'log-in', 'authenticate', 'change-credentials-otp'];
 $admin = ['admin-dashboard', 'incident-reports', 'discipline-records', 'advisories', 'user-management','reports'];
-$guidance = [''];
-$teacher = [''];
+$teacher = ['teacher-dashboard', 'reports-incident', 'my-advisories','change-credentials'];
 $student = [''];
 
 if (in_array($page, $authPages)) {
-
     switch ($page) {
-
         case 'home-page':
             include __DIR__ . '/../auth/views/home-page.php';
             break;
@@ -27,14 +22,17 @@ if (in_array($page, $authPages)) {
         case 'log-in':
             include __DIR__. '/../auth/views/log-in.php';
             break;
+        // ✅ ADDED - Handle change-credentials-otp page
+        case 'change-credentials-otp':
+            include __DIR__. '/../app/teacher/views/change-credentials.php';
+            break;
     }
 } elseif (in_array($page, $admin)) {
     require_once __DIR__ . '/admin.php';
-} elseif (in_array($page, $guidance)) {
-
-    require_once __DIR__ . '/';
+} elseif (in_array($page, $teacher)) {
+    require_once __DIR__ . '/teacher.php';
 } else {
-
     http_response_code(404);
     echo '404 Page not found.';
 }
+?>

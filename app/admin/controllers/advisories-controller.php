@@ -10,6 +10,8 @@ require_once __DIR__ . '/../models/advisories-model.php';
 class AdvisoriesController {
     private $advisoriesModel;
     private $uploadDir = __DIR__ . '/../../../public/storage/photos/';
+    private $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    private $maxFileSize = 5242880; // 5MB
     
     public function __construct($pdo) {
         $this->advisoriesModel = new AdvisoriesModel($pdo);
@@ -22,27 +24,50 @@ class AdvisoriesController {
         return $this->advisoriesModel->getActiveSchoolYear();
     }
     
+    private function validateFile($file) {
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            return ['valid' => false, 'message' => 'File upload error.'];
+        }
+        if (!in_array($file['type'], $this->allowedTypes)) {
+            return ['valid' => false, 'message' => 'Only JPG, PNG, WebP allowed.'];
+        }
+        if ($file['size'] > $this->maxFileSize) {
+            return ['valid' => false, 'message' => 'File too large (max 5MB).'];
+        }
+        return ['valid' => true];
+    }
+
+    private function sanitizeFilename($filename) {
+        return preg_replace('/[^a-zA-Z0-9._-]/', '', basename($filename));
+    }
+    
     public function uploadProfilePicture() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['profile_pic'])) {
             $file = $_FILES['profile_pic'];
             $studentId = intval($_POST['student_id'] ?? 0);
             
-            if ($studentId <= 0) { echo json_encode(['success' => false, 'message' => 'Invalid student ID.']); exit; }
+            if ($studentId <= 0) { 
+                echo json_encode(['success' => false, 'message' => 'Invalid student ID.']); 
+                exit; 
+            }
             
-            $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-            $maxSize = 5 * 1024 * 1024;
-            
-            if ($file['error'] !== UPLOAD_ERR_OK) { echo json_encode(['success' => false, 'message' => 'File upload error.']); exit; }
-            if (!in_array($file['type'], $allowedTypes)) { echo json_encode(['success' => false, 'message' => 'Only JPG, PNG, WebP allowed.']); exit; }
-            if ($file['size'] > $maxSize) { echo json_encode(['success' => false, 'message' => 'File too large (max 5MB).']); exit; }
+            $validation = $this->validateFile($file);
+            if (!$validation['valid']) {
+                echo json_encode(['success' => false, 'message' => $validation['message']]);
+                exit;
+            }
             
             $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            $filename = 'student_' . $studentId . '_' . time() . '.' . $ext;
+            $filename = 'student_' . $studentId . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
             $filepath = $this->uploadDir . $filename;
             $relativePath = '/student-discipline-and-incident-reporting-system/public/storage/photos/' . $filename;
             
-            if (!move_uploaded_file($file['tmp_name'], $filepath)) { echo json_encode(['success' => false, 'message' => 'Save failed.']); exit; }
+            if (!move_uploaded_file($file['tmp_name'], $filepath)) { 
+                echo json_encode(['success' => false, 'message' => 'Save failed.']); 
+                exit; 
+            }
             
+            chmod($filepath, 0644);
             echo json_encode(['success' => true, 'path' => $relativePath]);
             exit;
         }
@@ -53,22 +78,28 @@ class AdvisoriesController {
             $file = $_FILES['profile_pic'];
             $teacherId = intval($_POST['teacher_id'] ?? 0);
             
-            if ($teacherId <= 0) { echo json_encode(['success' => false, 'message' => 'Invalid teacher ID.']); exit; }
+            if ($teacherId <= 0) { 
+                echo json_encode(['success' => false, 'message' => 'Invalid teacher ID.']); 
+                exit; 
+            }
             
-            $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-            $maxSize = 5 * 1024 * 1024;
-            
-            if ($file['error'] !== UPLOAD_ERR_OK) { echo json_encode(['success' => false, 'message' => 'File upload error.']); exit; }
-            if (!in_array($file['type'], $allowedTypes)) { echo json_encode(['success' => false, 'message' => 'Only JPG, PNG, WebP allowed.']); exit; }
-            if ($file['size'] > $maxSize) { echo json_encode(['success' => false, 'message' => 'File too large (max 5MB).']); exit; }
+            $validation = $this->validateFile($file);
+            if (!$validation['valid']) {
+                echo json_encode(['success' => false, 'message' => $validation['message']]);
+                exit;
+            }
             
             $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            $filename = 'teacher_' . $teacherId . '_' . time() . '.' . $ext;
+            $filename = 'teacher_' . $teacherId . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
             $filepath = $this->uploadDir . $filename;
             $relativePath = '/student-discipline-and-incident-reporting-system/public/storage/photos/' . $filename;
             
-            if (!move_uploaded_file($file['tmp_name'], $filepath)) { echo json_encode(['success' => false, 'message' => 'Save failed.']); exit; }
+            if (!move_uploaded_file($file['tmp_name'], $filepath)) { 
+                echo json_encode(['success' => false, 'message' => 'Save failed.']); 
+                exit; 
+            }
             
+            chmod($filepath, 0644);
             echo json_encode(['success' => true, 'path' => $relativePath]);
             exit;
         }
@@ -278,14 +309,14 @@ class AdvisoriesController {
             case 'get_student_profile':
                 $sid = intval($_POST['student_id'] ?? 0);
                 if ($sid <= 0) { 
-                    echo json_encode(['success' => false, 'message' => 'Invalid student ID: ' . $sid]); 
+                    echo json_encode(['success' => false, 'message' => 'Invalid student ID.']); 
                     break; 
                 }
                 $profile = $this->advisoriesModel->getStudentProfile($sid);
                 if ($profile) {
                     echo json_encode(['success' => true, 'data' => $profile]);
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Student profile not found for ID: ' . $sid]);
+                    echo json_encode(['success' => false, 'message' => 'Student profile not found.']);
                 }
                 break;
 
