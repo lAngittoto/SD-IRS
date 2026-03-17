@@ -1,16 +1,16 @@
 <?php
 // Check if user is logged in and must change credentials
 if (!isset($_SESSION['user'])) {
-    header('Location: /student-discipline-and-incident-reporting-system/public/?page=log-in');
+    header('Location: /student-discipline-and-incident-reporting-system/public/log-in');
     exit;
 }
 
 // If user already changed credentials, redirect to dashboard
 if ($_SESSION['user']['must_change_credentials'] == 0) {
     if ($_SESSION['user']['role'] === 'Teacher') {
-        header('Location: /student-discipline-and-incident-reporting-system/public/?page=teacher-dashboard');
+        header('Location: /student-discipline-and-incident-reporting-system/public/teacher-dashboard');
     } elseif ($_SESSION['user']['role'] === 'admin') {
-        header('Location: /student-discipline-and-incident-reporting-system/public/?page=admin-dashboard');
+        header('Location: /student-discipline-and-incident-reporting-system/public/admin-dashboard');
     }
     exit;
 }
@@ -44,7 +44,7 @@ $appRoot    = ($projectIdx !== false)
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #043915 0%, #0a6b2a 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -74,7 +74,7 @@ $appRoot    = ($projectIdx !== false)
         }
 
         .modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #043915 0%, #0a6b2a 100%);
             color: white; padding: 30px 25px;
             border-radius: 16px 16px 0 0;
         }
@@ -119,8 +119,8 @@ $appRoot    = ($projectIdx !== false)
             font-size: 14px; transition: all .3s ease;
         }
         input:focus {
-            outline: none; border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102,126,234,.1);
+            outline: none; border-color: #043915;
+            box-shadow: 0 0 0 3px rgba(4,57,21,.15);
         }
 
         .input-wrapper { position: relative; }
@@ -131,7 +131,7 @@ $appRoot    = ($projectIdx !== false)
             background: none; border: none; cursor: pointer;
             color: #999; font-size: 18px; padding: 4px 8px;
         }
-        .toggle-btn:hover { color: #667eea; }
+        .toggle-btn:hover { color: #043915; }
 
         .password-strength {
             margin-top: 8px; padding: 10px; border-radius: 6px;
@@ -177,18 +177,18 @@ $appRoot    = ($projectIdx !== false)
             border:2px solid #e0e0e0; border-radius:8px; transition:all .3s ease;
         }
         .otp-input:focus {
-            outline:none; border-color:#667eea;
-            box-shadow:0 0 0 3px rgba(102,126,234,.1);
+            outline:none; border-color:#043915;
+            box-shadow:0 0 0 3px rgba(4,57,21,.15);
         }
-        .otp-input.filled { border-color: #667eea; }
+        .otp-input.filled { border-color: #043915; }
 
         .otp-resend {
             text-align:center; margin-top:20px;
             font-size:13px; color:#666;
         }
-        .otp-timer { font-weight:bold; color:#667eea; }
+        .otp-timer { font-weight:bold; color:#043915; }
         .resend-link {
-            color:#667eea; cursor:pointer;
+            color:#f8c922; cursor:pointer;
             text-decoration:none; font-weight:600;
         }
         .resend-link:hover { text-decoration: underline; }
@@ -202,10 +202,10 @@ $appRoot    = ($projectIdx !== false)
             transition:all .3s ease;
             text-transform:uppercase; letter-spacing:.5px;
         }
-        .btn-primary { background:#667eea; color:white; }
+        .btn-primary { background:#043915; color:white; }
         .btn-primary:hover:not(:disabled) {
-            background:#5568d3;
-            box-shadow:0 8px 20px rgba(102,126,234,.4);
+            background:#032b10;
+            box-shadow:0 8px 20px rgba(4,57,21,.4);
         }
         .btn-primary:disabled { background:#ccc; cursor:not-allowed; opacity:.6; }
         .btn-secondary {
@@ -216,21 +216,21 @@ $appRoot    = ($projectIdx !== false)
 
         .current-user {
             background:#f9f9f9; padding:12px; border-radius:6px;
-            margin-bottom:20px; border-left:4px solid #667eea;
+            margin-bottom:20px; border-left:4px solid #043915;
         }
         .current-user small { color:#666; font-size:11px; }
         .current-user strong { color:#333; display:block; margin-top:4px; }
 
         .info-box {
-            background:#e3f2fd; border-left:4px solid #2196f3;
+            background:#fffbea; border-left:4px solid #f8c922;
             padding:12px; border-radius:4px;
             margin-bottom:20px; font-size:12px;
-            color:#1565c0; line-height:1.6;
+            color:#7a5c00; line-height:1.6;
         }
 
         .spinner {
             border:3px solid #f3f3f3;
-            border-top:3px solid #667eea;
+            border-top:3px solid #043915;
             border-radius:50%; width:30px; height:30px;
             animation:spin 1s linear infinite;
             margin:0 auto 10px;
@@ -246,7 +246,7 @@ $appRoot    = ($projectIdx !== false)
             display:flex; align-items:center; justify-content:center;
             font-weight:600; font-size:14px; transition:all .3s ease;
         }
-        .step.active    { background:#667eea; color:white; }
+        .step.active    { background:#043915; color:white; }
         .step.completed { background:#4caf50; color:white; }
     </style>
 </head>
@@ -391,7 +391,7 @@ $appRoot    = ($projectIdx !== false)
           <p style="color:#666;margin-bottom:30px">Your account has been secured.</p>
           <div id="redirectLoader">
             <div class="spinner"></div>
-            <p style="color:#667eea;margin-top:10px">Redirecting to dashboard...</p>
+            <p style="color:#043915;margin-top:10px">Redirecting to dashboard...</p>
           </div>
         </div>
       </div>
@@ -407,7 +407,7 @@ const APP_ROOT = <?= json_encode(rtrim($appRoot, '/')) ?>;
 // Controller endpoints — inside public/ so Apache allows direct access
 const SEND_OTP_URL   = APP_ROOT + '/public/api/send-otp.php';
 const VERIFY_OTP_URL = APP_ROOT + '/public/api/verify-otp-and-update.php';
-const DASHBOARD_URL  = APP_ROOT + '/public/?page=teacher-dashboard';
+const DASHBOARD_URL  = APP_ROOT + '/public/teacher-dashboard';
 
 // State
 const otpData = {
@@ -677,7 +677,7 @@ function goBack() {
 
 function logout() {
     if (confirm('Are you sure you want to logout?')) {
-        window.location.href = APP_ROOT + '/public/?page=log-in';
+        window.location.href = APP_ROOT + '/public/log-in';
     }
 }
 

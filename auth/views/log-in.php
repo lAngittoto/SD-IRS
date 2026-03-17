@@ -46,7 +46,7 @@ ob_start();
             </div>
 
             <div class="flex justify-end">
-                <a href="#" class="text-xs font-bold text-[#043915] hover:underline underline-offset-4 uppercase tracking-tighter">Forgot your password?</a>
+                <a href="forgot-password" class="text-xs font-bold text-[#043915] hover:underline underline-offset-4 uppercase tracking-tighter">Forgot your password?</a>
             </div>
 
             <button type="submit"

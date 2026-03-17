@@ -6,7 +6,7 @@ if ($page === '') {
 }
 
 // ✅ UPDATED - Added 'change-credentials-otp' sa authPages
-$authPages = ['home-page', 'log-in', 'authenticate', 'change-credentials-otp'];
+$authPages = ['home-page', 'log-in', 'authenticate', 'change-credentials-otp', 'forgot-password'];
 $admin = ['admin-dashboard', 'incident-reports', 'discipline-records', 'advisories', 'user-management','reports'];
 $teacher = ['teacher-dashboard', 'reports-incident', 'my-advisories','change-credentials'];
 $student = [''];
@@ -25,6 +25,9 @@ if (in_array($page, $authPages)) {
         // ✅ ADDED - Handle change-credentials-otp page
         case 'change-credentials-otp':
             include __DIR__. '/../app/teacher/views/change-credentials.php';
+            break;
+        case 'forgot-password':
+            include __DIR__. '/../auth/views/forgot-password.php';
             break;
     }
 } elseif (in_array($page, $admin)) {

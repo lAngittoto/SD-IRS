@@ -143,14 +143,14 @@ function buildOtpHtml($name, $otp) {
 <style>
   body{font-family:'Segoe UI',Arial,sans-serif;color:#333;margin:0;padding:0}
   .wrap{max-width:600px;margin:0 auto;padding:20px}
-  .hdr{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;
+  .hdr{background:linear-gradient(135deg,#043915,#0a6b2a);color:#fff;
        padding:30px;text-align:center;border-radius:8px 8px 0 0}
   .hdr h2{margin:0;font-size:24px}
   .hdr p{margin:6px 0 0;opacity:.9;font-size:14px}
   .body{background:#f9f9f9;padding:30px;border-radius:0 0 8px 8px}
-  .otp-box{background:#fff;border:2px solid #667eea;
+  .otp-box{background:#fff;border:2px solid #043915;
            padding:20px;text-align:center;border-radius:8px;margin:20px 0}
-  .otp-code{font-size:48px;font-weight:bold;color:#667eea;
+  .otp-code{font-size:48px;font-weight:bold;color:#043915;
             letter-spacing:8px;font-family:'Courier New',monospace}
   .timer{color:#d32f2f;font-weight:bold;margin-top:10px;font-size:13px}
   .warn{background:#fff3cd;border-left:4px solid #ffc107;
