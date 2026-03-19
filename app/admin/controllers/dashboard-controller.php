@@ -5,54 +5,37 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
     exit;
 }
 
-// Include necessary files
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../models/dashboard-model.php';
 
 class DashboardController {
-    private $dashboardModel;
-    
-    public function __construct() {
-        global $pdo;
-        $this->dashboardModel = new DashboardModel($pdo);
+    private $model;
+
+    public function __construct($pdo) {
+        $this->model = new DashboardModel($pdo);
     }
-    
+
     public function index() {
-        // Get dashboard summary
-        $summary = $this->dashboardModel->getDashboardSummary();
-        
-        // Extract and pass to view
-        $totalStudents = $summary['total_students'];
-        $totalFaculty = $summary['total_faculty'];
-        
-        // Get all violations
-        $allViolations = $this->dashboardModel->getAllViolationNames();
-        
-        // Get top violations (most common)
-        $topViolations = $this->dashboardModel->getTopViolations();
-        
-        // Get monthly trends (if you have incident data)
-        $monthlyTrends = $this->dashboardModel->getMonthlyTrends();
-        
-        // Get violation breakdown by severity
-        $violationBreakdown = $this->dashboardModel->getViolationBreakdown();
-        
-        // Get incident statistics (if you have incident table)
-        $totalIncidents = $this->dashboardModel->getTotalIncidents();
-        $pendingReports = $this->dashboardModel->getPendingReports();
-        $resolvedCases = $this->dashboardModel->getResolvedCases();
-        
-        // Include the view
+        /* ── Summary stats ── */
+        $summary         = $this->model->getDashboardSummary();
+        $totalStudents   = $summary['total_students'];
+        $totalFaculty    = $summary['total_faculty'];
+        $totalIncidents  = $summary['total_incidents'];
+        $pendingReports  = $summary['pending_reports'];
+        $reviewedReports = $summary['reviewed_reports'];
+        $resolvedCases   = $summary['resolved_cases'];
+
+        /* ── Charts & lists ── */
+        $monthlyTrends      = $this->model->getMonthlyTrends();
+        $statusBreakdown    = $this->model->getStatusBreakdown();
+        $allViolations      = $this->model->getAllViolationNames();
+        $topViolations      = $this->model->getTopViolations(5);
+        $recentIncidents    = $this->model->getRecentIncidents(5);
+
         require_once __DIR__ . '/../views/dashboard.php';
-    }
-    
-    public function getStatistics() {
-        header('Content-Type: application/json');
-        echo json_encode($this->dashboardModel->getDashboardSummary());
     }
 }
 
-// Initialize controller
-$controller = new DashboardController();
+$controller = new DashboardController($pdo);
 $controller->index();
 ?>
