@@ -21,6 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: /student-discipline-and-incident-reporting-system/public/admin-dashboard');
         } elseif ($user['role'] === 'Teacher') {
             header('Location: /student-discipline-and-incident-reporting-system/public/teacher-dashboard');
+        }  elseif ($user['role'] === 'Student') {
+            header('Location: /student-discipline-and-incident-reporting-system/public/student-dashboard');
         }
         exit;
     } else {

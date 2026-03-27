@@ -9,7 +9,7 @@ if ($page === '') {
 $authPages = ['home-page', 'log-in', 'authenticate', 'change-credentials-otp', 'forgot-password'];
 $admin = ['admin-dashboard', 'incident-reports', 'discipline-records', 'advisories', 'user-management','reports'];
 $teacher = ['teacher-dashboard', 'reports-incident', 'my-advisories','change-credentials'];
-$student = [''];
+$student = ['student-dashboard', 'code-of-conduct', 'student-report'];
 
 if (in_array($page, $authPages)) {
     switch ($page) {
@@ -34,6 +34,8 @@ if (in_array($page, $authPages)) {
     require_once __DIR__ . '/admin.php';
 } elseif (in_array($page, $teacher)) {
     require_once __DIR__ . '/teacher.php';
+} elseif (in_array($page, $student)) {
+    require_once __DIR__ . '/student.php';
 } else {
     http_response_code(404);
     echo '404 Page not found.';
