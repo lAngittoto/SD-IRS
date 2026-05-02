@@ -1,3 +1,5 @@
+<!-- layout.php -->
+<?php $content ??= ''; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,9 +8,9 @@
     <link rel="stylesheet" href="../public/assets/css/output.css">
     <link rel="stylesheet" href="../public/assets/css/all.min.css">
     <link rel="stylesheet" href="../public/assets/css/fontawesome.min.css">
-    <!-- npx tailwindcss -i ./public/assets/css/input.css -o ./public/assets/css/output.css --watch -->
 </head>
 <body>
-    <?= $content  ?>
+    <?= $content ?>
+     <!-- npx tailwindcss -i ./public/assets/css/input.css -o ./public/assets/css/output.css --watch -->
 </body>
 </html>

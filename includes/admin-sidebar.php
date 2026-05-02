@@ -38,6 +38,12 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
         <a href="reports" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-all duration-300">
             <i class="fa-solid fa-chart-column w-5"></i> Reports
         </a>
+        <a href="audit-log" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-all duration-300">
+    <i class="fa-solid fa-clock-rotate-left w-5"></i> Audit Log
+</a>
+<a href="backuprestore" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-all duration-300">
+    <i class="fa-solid fa-database w-5"></i> Backup & Restore
+</a>
     </nav>
 
     <div class="px-4 pb-6 mt-auto">

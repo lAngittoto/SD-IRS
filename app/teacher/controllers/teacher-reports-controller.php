@@ -6,21 +6,39 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'Teacher') {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../models/teacher-reports-model.php';
+require_once __DIR__ . '/../../admin/controllers/audit-log-recorder.php'; // <-- Audit log recorder
 
 class TeacherReportController {
     private $model;
-    private $uploadDir = __DIR__ . '/../../../public/storage/evidence/';
-    private $allowedTypes = ['image/jpeg','image/png','image/webp','video/mp4','video/webm','audio/mpeg','audio/ogg','audio/wav'];
-    private $maxFileSize = 20971520; // 20MB
+    private $pdo;
+    private $uploadDir    = __DIR__ . '/../../../public/storage/evidence/';
+    private $allowedTypes = [
+        'image/jpeg', 'image/png', 'image/webp',
+        'video/mp4',  'video/webm',
+        'audio/mpeg', 'audio/ogg', 'audio/wav',
+    ];
+    private $maxFileSize = 20971520; // 20 MB
 
     public function __construct($pdo) {
+        $this->pdo   = $pdo;
         $this->model = new TeacherReportModel($pdo);
+
         if (!is_dir($this->uploadDir)) {
             mkdir($this->uploadDir, 0755, true);
         }
     }
 
-    private function validateFile($file) {
+    // ──────────────────────────────────────────────────────────────
+    //  Audit helper — wraps auditRecord() from audit-log-recorder.php
+    // ──────────────────────────────────────────────────────────────
+    private function audit(string $action, string $module, string $description = ''): void {
+        auditRecord($this->pdo, $action, $module, $description);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    //  File helpers
+    // ──────────────────────────────────────────────────────────────
+    private function validateFile(array $file): array {
         if ($file['error'] !== UPLOAD_ERR_OK) {
             return ['valid' => false, 'message' => 'File upload error.'];
         }
@@ -28,19 +46,22 @@ class TeacherReportController {
             return ['valid' => false, 'message' => 'Only JPG, PNG, WebP, MP4, WebM, MP3, OGG, WAV allowed.'];
         }
         if ($file['size'] > $this->maxFileSize) {
-            return ['valid' => false, 'message' => 'File too large (max 20MB).'];
+            return ['valid' => false, 'message' => 'File too large (max 20 MB).'];
         }
         return ['valid' => true];
     }
 
-    private function getEvidenceType($mime) {
+    private function getEvidenceType(string $mime): string {
         if (str_starts_with($mime, 'image/')) return 'image';
         if (str_starts_with($mime, 'video/')) return 'video';
         if (str_starts_with($mime, 'audio/')) return 'audio';
         return 'file';
     }
 
-    public function handleAjaxRequest() {
+    // ──────────────────────────────────────────────────────────────
+    //  AJAX handler — get_students_by_grade / get_teachers
+    // ──────────────────────────────────────────────────────────────
+    public function handleAjaxRequest(): void {
         header('Content-Type: application/json');
         $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
@@ -57,7 +78,7 @@ class TeacherReportController {
 
             case 'get_teachers':
                 $exclude = intval($_SESSION['user']['user_id'] ?? 0);
-                $data = $this->model->getAllTeachers($exclude);
+                $data    = $this->model->getAllTeachers($exclude);
                 echo json_encode(['success' => true, 'data' => $data]);
                 break;
 
@@ -68,18 +89,22 @@ class TeacherReportController {
         exit;
     }
 
-    public function submitReport() {
+    // ──────────────────────────────────────────────────────────────
+    //  Submit report
+    // ──────────────────────────────────────────────────────────────
+    public function submitReport(): void {
         header('Content-Type: application/json');
 
-        $teacher_id    = intval($_SESSION['user']['user_id'] ?? 0);
-        $report_target = trim($_POST['report_target'] ?? '');
-        $location      = trim($_POST['location']      ?? '');
-        $description   = trim($_POST['description']   ?? '');
-        $violation_id  = intval($_POST['violation_id'] ?? 0) ?: null;
+        $teacher_id       = intval($_SESSION['user']['user_id'] ?? 0);
+        $teacher_name     = $_SESSION['user']['name'] ?? 'Teacher';
+        $report_target    = trim($_POST['report_target']    ?? '');
+        $location         = trim($_POST['location']         ?? '');
+        $description      = trim($_POST['description']      ?? '');
+        $violation_id     = intval($_POST['violation_id']   ?? 0) ?: null;
         $custom_violation = trim($_POST['custom_violation'] ?? '');
 
-        // --- Validations ---
-        if (!in_array($report_target, ['student','teacher','other'])) {
+        // ── Validations ──────────────────────────────────────────
+        if (!in_array($report_target, ['student', 'teacher', 'other'])) {
             echo json_encode(['success' => false, 'message' => 'Select who you are reporting.']); exit;
         }
         if (empty($location)) {
@@ -96,16 +121,20 @@ class TeacherReportController {
         $teacher_involved_id = null;
         $other_name          = null;
         $grade_level         = null;
+        $subject_label       = '';   // used in audit description
 
         if ($report_target === 'student') {
             $grade_level = trim($_POST['grade_level'] ?? '');
             $student_id  = intval($_POST['student_id'] ?? 0) ?: null;
+
             if (!in_array($grade_level, ['7','8','9','10','11','12'])) {
-                echo json_encode(['success' => false, 'message' => 'Select the student\'s grade level.']); exit;
+                echo json_encode(['success' => false, 'message' => "Select the student's grade level."]); exit;
             }
             if (!$student_id) {
                 echo json_encode(['success' => false, 'message' => 'Select the student involved.']); exit;
             }
+            $subject_label = "student ID {$student_id} (Grade {$grade_level})";
+
         } elseif ($report_target === 'teacher') {
             $teacher_involved_id = intval($_POST['teacher_involved_id'] ?? 0) ?: null;
             if (!$teacher_involved_id) {
@@ -114,28 +143,31 @@ class TeacherReportController {
             if ($teacher_involved_id === $teacher_id) {
                 echo json_encode(['success' => false, 'message' => 'You cannot report yourself.']); exit;
             }
+            $subject_label = "teacher ID {$teacher_involved_id}";
+
         } elseif ($report_target === 'other') {
             $other_name = trim($_POST['other_name'] ?? '');
             if (empty($other_name)) {
                 echo json_encode(['success' => false, 'message' => 'Enter the name of the person involved.']); exit;
             }
+            $subject_label = "other: {$other_name}";
         }
 
-        // --- Handle file upload ---
+        // ── File upload ───────────────────────────────────────────
         $evidence_path = null;
         $evidence_type = null;
 
         if (isset($_FILES['evidence']) && $_FILES['evidence']['error'] !== UPLOAD_ERR_NO_FILE) {
             $file       = $_FILES['evidence'];
             $validation = $this->validateFile($file);
+
             if (!$validation['valid']) {
                 echo json_encode(['success' => false, 'message' => $validation['message']]); exit;
             }
 
-            $ext           = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            $filename      = 'evidence_' . $teacher_id . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-            $filepath      = $this->uploadDir . $filename;
-            $evidence_type = $this->getEvidenceType($file['type']);
+            $ext      = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            $filename = 'evidence_' . $teacher_id . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+            $filepath = $this->uploadDir . $filename;
 
             if (!move_uploaded_file($file['tmp_name'], $filepath)) {
                 echo json_encode(['success' => false, 'message' => 'Could not save evidence file.']); exit;
@@ -143,8 +175,10 @@ class TeacherReportController {
 
             chmod($filepath, 0644);
             $evidence_path = '/student-discipline-and-incident-reporting-system/public/storage/evidence/' . $filename;
+            $evidence_type = $this->getEvidenceType($file['type']);
         }
 
+        // ── Persist to DB ─────────────────────────────────────────
         $result = $this->model->submitReport([
             'teacher_id'          => $teacher_id,
             'report_target'       => $report_target,
@@ -160,14 +194,46 @@ class TeacherReportController {
             'evidence_type'       => $evidence_type,
         ]);
 
+        // ── Audit log ─────────────────────────────────────────────
+        if (!empty($result['success'])) {
+            $violationLabel = !empty($custom_violation)
+                ? $custom_violation
+                : "violation ID {$violation_id}";
+
+            $this->audit(
+                'SUBMIT_REPORT',
+                'Teacher Reports',
+                "{$teacher_name} (ID {$teacher_id}) submitted a report against {$subject_label}. "
+                    . "Violation: {$violationLabel}. Location: {$location}."
+                    . ($evidence_path ? " Evidence attached ({$evidence_type})." : '')
+            );
+        } else {
+            // Log failed attempts too so admins can spot suspicious patterns
+            $this->audit(
+                'SUBMIT_REPORT_FAILED',
+                'Teacher Reports',
+                "{$teacher_name} (ID {$teacher_id}) failed to submit a report against {$subject_label}. "
+                    . "Reason: " . ($result['message'] ?? 'Unknown error') . "."
+            );
+        }
+
         echo json_encode($result);
         exit;
     }
 
-    public function getViolations()   { return $this->model->getViolations(); }
-    public function getMyReports()    { return $this->model->getReportsByTeacher($_SESSION['user']['user_id']); }
+    // ──────────────────────────────────────────────────────────────
+    //  Simple data fetchers used by the view
+    // ──────────────────────────────────────────────────────────────
+    public function getViolations(): array {
+        return $this->model->getViolations();
+    }
+
+    public function getMyReports(): array {
+        return $this->model->getReportsByTeacher($_SESSION['user']['user_id']);
+    }
 }
 
+// ── Bootstrap ────────────────────────────────────────────────────
 $teacherReportController = new TeacherReportController($pdo);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

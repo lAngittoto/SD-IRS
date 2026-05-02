@@ -6,21 +6,23 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../models/advisories-model.php';
+require_once __DIR__ . '/audit-log-recorder.php'; // ← ADD
 
 class AdvisoriesController {
     private $advisoriesModel;
+    private $pdo; // ← ADD
     private $uploadDir    = __DIR__ . '/../../../public/storage/photos/';
     private $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    private $maxFileSize  = 5242880; // 5 MB
+    private $maxFileSize  = 5242880;
 
     public function __construct($pdo) {
+        $this->pdo = $pdo; // ← ADD
         $this->advisoriesModel = new AdvisoriesModel($pdo);
         if (!is_dir($this->uploadDir)) mkdir($this->uploadDir, 0755, true);
     }
 
     public function getActiveSchoolYear() { return $this->advisoriesModel->getActiveSchoolYear(); }
 
-    /* ── File helpers ─────────────────────────────────────────── */
     private function validateFile($file) {
         if ($file['error'] !== UPLOAD_ERR_OK)             return ['valid'=>false,'message'=>'Upload error.'];
         if (!in_array($file['type'], $this->allowedTypes)) return ['valid'=>false,'message'=>'Only JPG, PNG, WebP allowed.'];
@@ -41,6 +43,7 @@ class AdvisoriesController {
             $rel      = '/student-discipline-and-incident-reporting-system/public/storage/photos/'.$filename;
             if (!move_uploaded_file($file['tmp_name'], $path)) { echo json_encode(['success'=>false,'message'=>'Save failed.']); exit; }
             chmod($path, 0644);
+            auditRecord($this->pdo, 'UPLOAD', 'Advisories', "Uploaded profile photo for Student ID: {$studentId}"); // ← LOG
             echo json_encode(['success'=>true,'path'=>$rel]); exit;
         }
     }
@@ -58,11 +61,11 @@ class AdvisoriesController {
             $rel      = '/student-discipline-and-incident-reporting-system/public/storage/photos/'.$filename;
             if (!move_uploaded_file($file['tmp_name'], $path)) { echo json_encode(['success'=>false,'message'=>'Save failed.']); exit; }
             chmod($path, 0644);
+            auditRecord($this->pdo, 'UPLOAD', 'Advisories', "Uploaded profile photo for Teacher ID: {$teacherId}"); // ← LOG
             echo json_encode(['success'=>true,'path'=>$rel]); exit;
         }
     }
 
-    /* ── Teacher / Student actions ───────────────────────────── */
     public function assignAdvisoryTeacher() {
         if ($_SERVER['REQUEST_METHOD']==='POST') {
             $data = [
@@ -77,7 +80,14 @@ class AdvisoriesController {
                 if (empty($data['advisory_name'])) { echo json_encode(['success'=>false,'message'=>'Class name required.']); exit; }
                 if (!in_array($data['grade_level'],['7','8','9','10'])) { echo json_encode(['success'=>false,'message'=>'Select grade 7–10.']); exit; }
             }
-            echo json_encode($this->advisoriesModel->assignAdvisoryTeacher($data)); exit;
+            $result = $this->advisoriesModel->assignAdvisoryTeacher($data);
+            if ($result['success']) { // ← LOG
+                $label = $data['role_type'] === 'advisory'
+                    ? "as Advisory Teacher for {$data['advisory_name']} (Grade {$data['grade_level']})"
+                    : "as Subject Teacher";
+                auditRecord($this->pdo, 'CREATE', 'Advisories', "Assigned Teacher ID {$data['teacher_id']} {$label}");
+            }
+            echo json_encode($result); exit;
         }
     }
 
@@ -85,7 +95,11 @@ class AdvisoriesController {
         if ($_SERVER['REQUEST_METHOD']==='POST') {
             $id = intval($_POST['advisory_id'] ?? 0);
             if ($id<=0) { echo json_encode(['success'=>false,'message'=>'Invalid ID.']); exit; }
-            echo json_encode($this->advisoriesModel->convertToSubjectTeacher($id)); exit;
+            $result = $this->advisoriesModel->convertToSubjectTeacher($id);
+            if ($result['success']) { // ← LOG
+                auditRecord($this->pdo, 'UPDATE', 'Advisories', "Converted Advisory ID {$id} to Subject Teacher");
+            }
+            echo json_encode($result); exit;
         }
     }
 
@@ -107,7 +121,12 @@ class AdvisoriesController {
 
             $sy = $this->advisoriesModel->getActiveSchoolYear();
             $syId = $sy ? $sy['school_year_id'] : 1;
-            echo json_encode($this->advisoriesModel->assignStudentsToAdvisory($advisory_id, $student_ids, $grade_levels, $syId)); exit;
+            $result = $this->advisoriesModel->assignStudentsToAdvisory($advisory_id, $student_ids, $grade_levels, $syId);
+            if ($result['success']) { // ← LOG
+                $count = count($student_ids);
+                auditRecord($this->pdo, 'CREATE', 'Advisories', "Assigned {$count} student(s) to Advisory ID {$advisory_id}");
+            }
+            echo json_encode($result); exit;
         }
     }
 
@@ -118,7 +137,11 @@ class AdvisoriesController {
             $grade = $_POST['current_grade'] ?? '';
             if ($aid<=0||$naid<=0) { echo json_encode(['success'=>false,'message'=>'Invalid data.']); exit; }
             if (!in_array($grade,['7','8','9','10'])) { echo json_encode(['success'=>false,'message'=>'Invalid grade.']); exit; }
-            echo json_encode($this->advisoriesModel->reassignStudent($aid,$naid,$grade)); exit;
+            $result = $this->advisoriesModel->reassignStudent($aid,$naid,$grade);
+            if ($result['success']) { // ← LOG
+                auditRecord($this->pdo, 'UPDATE', 'Advisories', "Reassigned Assignment ID {$aid} to Advisory ID {$naid}");
+            }
+            echo json_encode($result); exit;
         }
     }
 
@@ -126,7 +149,11 @@ class AdvisoriesController {
         if ($_SERVER['REQUEST_METHOD']==='POST') {
             $id = intval($_POST['assignment_id'] ?? 0);
             if ($id<=0) { echo json_encode(['success'=>false,'message'=>'Invalid ID.']); exit; }
-            echo json_encode($this->advisoriesModel->removeFromAdvisory($id)); exit;
+            $result = $this->advisoriesModel->removeFromAdvisory($id);
+            if ($result['success']) { // ← LOG
+                auditRecord($this->pdo, 'DELETE', 'Advisories', "Removed student from advisory. Assignment ID: {$id}");
+            }
+            echo json_encode($result); exit;
         }
     }
 
@@ -136,7 +163,11 @@ class AdvisoriesController {
             $g  = trim($_POST['new_grade']       ?? '');
             if ($id<=0) { echo json_encode(['success'=>false,'message'=>'Invalid ID.']); exit; }
             if (!in_array($g,['7','8','9','10'])) { echo json_encode(['success'=>false,'message'=>'Invalid grade.']); exit; }
-            echo json_encode($this->advisoriesModel->updateStudentGrade($id,$g)); exit;
+            $result = $this->advisoriesModel->updateStudentGrade($id,$g);
+            if ($result['success']) { // ← LOG
+                auditRecord($this->pdo, 'UPDATE', 'Advisories', "Updated grade to Grade {$g} for Assignment ID {$id}");
+            }
+            echo json_encode($result); exit;
         }
     }
 
@@ -148,7 +179,12 @@ class AdvisoriesController {
             if (!in_array($g,['7','8','9','10'])) { echo json_encode(['success'=>false,'message'=>'Invalid grade.']); exit; }
             $ids = array_filter(array_map('intval',$ids), fn($x)=>$x>0);
             if (empty($ids)) { echo json_encode(['success'=>false,'message'=>'Invalid.']); exit; }
-            echo json_encode($this->advisoriesModel->bulkUpdateStudentGrade($ids,$g)); exit;
+            $result = $this->advisoriesModel->bulkUpdateStudentGrade($ids,$g);
+            if ($result['success']) { // ← LOG
+                $count = count($ids);
+                auditRecord($this->pdo, 'UPDATE', 'Advisories', "Bulk updated {$count} student(s) to Grade {$g}");
+            }
+            echo json_encode($result); exit;
         }
     }
 
@@ -158,7 +194,11 @@ class AdvisoriesController {
             $g   = trim($_POST['new_grade']    ?? '');
             if ($sid<=0) { echo json_encode(['success'=>false,'message'=>'Invalid ID.']); exit; }
             if (!in_array($g,['7','8','9','10','11','12'])) { echo json_encode(['success'=>false,'message'=>'Invalid grade.']); exit; }
-            echo json_encode($this->advisoriesModel->updateStudentGradeByStudentId($sid,$g)); exit;
+            $result = $this->advisoriesModel->updateStudentGradeByStudentId($sid,$g);
+            if ($result['success']) { // ← LOG
+                auditRecord($this->pdo, 'UPDATE', 'Advisories', "Updated grade to Grade {$g} for Student ID {$sid}");
+            }
+            echo json_encode($result); exit;
         }
     }
 
@@ -171,11 +211,14 @@ class AdvisoriesController {
             if ($sy<2000||$sy>2100)        { echo json_encode(['success'=>false,'message'=>'Invalid start year.']); exit; }
             if ($ey<2000||$ey>2100)        { echo json_encode(['success'=>false,'message'=>'Invalid end year.']); exit; }
             if ($ey<=$sy)                  { echo json_encode(['success'=>false,'message'=>'End year must be after start year.']); exit; }
-            echo json_encode($this->advisoriesModel->updateSchoolYear($id,$sy,$ey)); exit;
+            $result = $this->advisoriesModel->updateSchoolYear($id,$sy,$ey);
+            if ($result['success']) { // ← LOG
+                auditRecord($this->pdo, 'UPDATE', 'Advisories', "Updated School Year ID {$id} to {$sy}–{$ey}");
+            }
+            echo json_encode($result); exit;
         }
     }
 
-    /* ── Getters ─────────────────────────────────────────────── */
     public function getAllTeachers()      { return $this->advisoriesModel->getAllTeachers(); }
     public function getAdvisoryTeachers(){ return $this->advisoriesModel->getAdvisoryTeachers(); }
     public function getSubjectTeachers() { return $this->advisoriesModel->getSubjectTeachers(); }
@@ -196,13 +239,11 @@ class AdvisoriesController {
         return $this->advisoriesModel->getStudentsByAdvisory($advisory_id);
     }
 
-    /* ── AJAX dispatcher ─────────────────────────────────────── */
     public function handleAjaxRequest() {
         header('Content-Type: application/json');
         $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
         switch ($action) {
-            /* ── filtered table data ── */
             case 'get_filtered_data':
                 $filters = [
                     'teacher_role' => $_POST['teacher_role'] ?? '',
@@ -216,7 +257,6 @@ class AdvisoriesController {
                 echo json_encode(['success'=>true,'data'=>$data,'count'=>count($data)]);
                 break;
 
-            /* ── lists ── */
             case 'get_unassigned_students':
                 $data = $this->advisoriesModel->getUnassignedStudents();
                 echo json_encode(['success'=>true,'data'=>$data,'count'=>count($data)]);
@@ -242,7 +282,6 @@ class AdvisoriesController {
                 echo json_encode(['success'=>true,'data'=>$data,'count'=>count($data)]);
                 break;
 
-            /* ── student profile ── */
             case 'get_student_profile':
                 $sid = intval($_POST['student_id']??0);
                 if ($sid<=0) { echo json_encode(['success'=>false,'message'=>'Invalid ID.']); break; }
@@ -250,7 +289,6 @@ class AdvisoriesController {
                 echo $p ? json_encode(['success'=>true,'data'=>$p]) : json_encode(['success'=>false,'message'=>'Not found.']);
                 break;
 
-            /* ── student academic history (assignment rows) ── */
             case 'get_student_history':
                 $sid = intval($_POST['student_id']??0);
                 if ($sid<=0) { echo json_encode(['success'=>false,'message'=>'Invalid ID.']); break; }
@@ -258,7 +296,6 @@ class AdvisoriesController {
                 echo json_encode(['success'=>true,'data'=>$data]);
                 break;
 
-            /* ── student incidents ── */
             case 'get_student_incidents':
                 $sid = intval($_POST['student_id']??0);
                 if ($sid<=0) { echo json_encode(['success'=>false,'message'=>'Invalid ID.']); break; }
@@ -266,7 +303,6 @@ class AdvisoriesController {
                 echo json_encode(['success'=>true,'data'=>$data]);
                 break;
 
-            /* ── teacher profile ── */
             case 'get_teacher_profile':
                 $aid = intval($_POST['advisory_id']??0);
                 if ($aid<=0) { echo json_encode(['success'=>false,'message'=>'Invalid ID.']); break; }
@@ -274,7 +310,6 @@ class AdvisoriesController {
                 echo $p ? json_encode(['success'=>true,'data'=>$p]) : json_encode(['success'=>false,'message'=>'Not found.']);
                 break;
 
-            /* ── update student info ── */
             case 'update_student_info':
                 $sid = intval($_POST['student_id']??0);
                 if ($sid<=0) { echo json_encode(['success'=>false,'message'=>'Invalid ID.']); break; }
@@ -289,10 +324,13 @@ class AdvisoriesController {
                     'guardian_contact' => trim($_POST['guardian_contact'] ?? ''),
                     'profile_pix'      => trim($_POST['profile_pix']      ?? ''),
                 ];
-                echo json_encode($this->advisoriesModel->updateStudentInfo($sid,$data));
+                $result = $this->advisoriesModel->updateStudentInfo($sid,$data);
+                if ($result['success']) { // ← LOG
+                    auditRecord($this->pdo, 'UPDATE', 'Advisories', "Updated profile info for Student ID {$sid}");
+                }
+                echo json_encode($result);
                 break;
 
-            /* ── update teacher info ── */
             case 'update_teacher_info':
                 $tid = intval($_POST['teacher_id']??0);
                 if ($tid<=0) { echo json_encode(['success'=>false,'message'=>'Invalid ID.']); break; }
@@ -305,26 +343,28 @@ class AdvisoriesController {
                     'specialization'   => trim($_POST['specialization']   ?? ''),
                     'profile_pix'      => trim($_POST['profile_pix']      ?? ''),
                 ];
-                echo json_encode($this->advisoriesModel->updateTeacherInfo($tid,$data));
+                $result = $this->advisoriesModel->updateTeacherInfo($tid,$data);
+                if ($result['success']) { // ← LOG
+                    auditRecord($this->pdo, 'UPDATE', 'Advisories', "Updated profile info for Teacher ID {$tid}");
+                }
+                echo json_encode($result);
                 break;
 
-            /* ── grade update by student ID ── */
             case 'update_student_grade_by_id':
                 $sid = intval($_POST['student_id']??0);
                 $g   = trim($_POST['new_grade']??'');
                 if ($sid<=0) { echo json_encode(['success'=>false,'message'=>'Invalid ID.']); break; }
                 if (!in_array($g,['7','8','9','10','11','12'])) { echo json_encode(['success'=>false,'message'=>'Invalid grade.']); break; }
-                echo json_encode($this->advisoriesModel->updateStudentGradeByStudentId($sid,$g));
+                $result = $this->advisoriesModel->updateStudentGradeByStudentId($sid,$g);
+                if ($result['success']) { // ← LOG
+                    auditRecord($this->pdo, 'UPDATE', 'Advisories', "Updated grade to Grade {$g} for Student ID {$sid}");
+                }
+                echo json_encode($result);
                 break;
 
-            /* ── photo uploads ── */
             case 'upload_profile_pic':         $this->uploadProfilePicture();        break;
             case 'upload_teacher_profile_pic': $this->uploadTeacherProfilePicture(); break;
 
-            /* ────────────────────────────────────────────────────────
-               GENERATE REPORT — single student full report as JSON
-               (the view JS will open the print modal from this data)
-            ──────────────────────────────────────────────────────── */
             case 'generate_student_report':
                 $sid = intval($_POST['student_id']??0);
                 if ($sid<=0) { echo json_encode(['success'=>false,'message'=>'Invalid ID.']); break; }
@@ -332,7 +372,6 @@ class AdvisoriesController {
                 echo json_encode(['success'=>true,'data'=>$report]);
                 break;
 
-            /* ── generate ALL students report ── */
             case 'generate_all_students_report':
                 $reports = $this->advisoriesModel->getAllStudentsForReport();
                 echo json_encode(['success'=>true,'data'=>$reports,'count'=>count($reports)]);
@@ -345,7 +384,7 @@ class AdvisoriesController {
     }
 }
 
-/* ── Bootstrap ──────────────────────────────────────────────────── */
+/* ── Bootstrap ── */
 $advisoriesController = new AdvisoriesController($pdo);
 
 if ($_SERVER['REQUEST_METHOD']==='POST') {
@@ -366,7 +405,6 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         $method = $directActions[$action];
         $advisoriesController->$method();
     } else {
-        /* All AJAX actions */
         $ajaxActions = [
             'get_student_profile','get_student_history','get_student_incidents',
             'get_teacher_profile','update_student_info','update_teacher_info',
@@ -387,4 +425,3 @@ if ($_SERVER['REQUEST_METHOD']==='GET' && isset($_GET['ajax'])) {
 }
 
 require_once __DIR__ . '/../views/advisories.php';
-?>

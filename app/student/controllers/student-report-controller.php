@@ -8,11 +8,11 @@ if (!isset($_SESSION['user'])) {
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../models/student-models.php';
 require_once __DIR__ . '/../models/student-report.php';
+require_once __DIR__ . '/../../admin/controllers/audit-log-recorder.php'; // <-- Audit log recorder
 
 $dashModel   = new StudentModel($pdo);
 $reportModel = new StudentReportModel($pdo);
 
-// FIX: $_SESSION['user'] is an array — access user_id from within it
 $userId = (int) ($_SESSION['user']['user_id'] ?? 0);
 
 if ($userId === 0) {
@@ -21,23 +21,46 @@ if ($userId === 0) {
     exit;
 }
 
+// ── Audit helper (procedural scope) ─────────────────────
+function auditStudentAction($pdo, string $action, string $description = ''): void {
+    auditRecord($pdo, $action, 'Student Reports', $description);
+}
+
 // ── AJAX: incident detail ────────────────────────────────
 if (isset($_GET['action']) && $_GET['action'] === 'detail') {
     header('Content-Type: application/json');
     $reportId = (int) ($_GET['report_id'] ?? 0);
+
     if (!$reportId) {
         echo json_encode(['success' => false, 'message' => 'Invalid report ID.']);
         exit;
     }
+
     $record = $dashModel->getIncidentDetail($reportId, $userId);
+
     if (!$record) {
+        // Audit: student tried to view a record that doesn't belong to them or doesn't exist
+        auditStudentAction(
+            $pdo,
+            'VIEW_REPORT_FAILED',
+            "Student ID {$userId} attempted to view report ID {$reportId} — record not found or unauthorized."
+        );
         echo json_encode(['success' => false, 'message' => 'Record not found.']);
         exit;
     }
+
     $record['date_display']     = $record['created_at']
         ? date('M j, Y g:i A', strtotime($record['created_at']))  : '—';
     $record['reviewed_display'] = $record['reviewed_at']
         ? date('M j, Y g:i A', strtotime($record['reviewed_at'])) : '—';
+
+    // Audit: successful view
+    auditStudentAction(
+        $pdo,
+        'VIEW_REPORT',
+        "Student ID {$userId} viewed incident report ID {$reportId}."
+    );
+
     echo json_encode(['success' => true, 'data' => $record]);
     exit;
 }
@@ -58,8 +81,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $studentInfo = $dashModel->getStudentById($userId);
     $gradeLevel  = $studentInfo['grade_level'] ?? null;
+    $studentName = trim(($studentInfo['first_name'] ?? '') . ' ' . ($studentInfo['last_name'] ?? '')) ?: "ID {$userId}";
 
-    // Validation
+    // ── Validation ───────────────────────────────────────
     if (!in_array($reportTarget, ['student', 'teacher', 'other'], true))
         $errors[] = 'Please select who you are reporting.';
     if ($reportTarget === 'student' && !$targetStudentId)
@@ -75,9 +99,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$violationId && $customViolation === '')
         $errors[] = 'Please select or describe a violation type.';
 
-    // File upload
+    // ── File upload ──────────────────────────────────────
     $evidencePath = null;
     $evidenceType = null;
+
     if (!empty($_FILES['evidence']['name'])) {
         $uploadResult = handleEvidenceUpload($_FILES['evidence'], $userId);
         if ($uploadResult['success']) {
@@ -88,13 +113,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // ── Validation failed ────────────────────────────────
     if (!empty($errors)) {
+        auditStudentAction(
+            $pdo,
+            'SUBMIT_REPORT_FAILED',
+            "Student {$studentName} (ID {$userId}) failed to submit a report. "
+                . "Errors: " . implode(' | ', $errors)
+        );
+
         $_SESSION['flash']     = ['type' => 'error', 'messages' => $errors];
         $_SESSION['form_data'] = $_POST;
         header('Location: /student-discipline-and-incident-reporting-system/public/?page=student-report');
         exit;
     }
 
+    // ── Build subject label for audit description ────────
+    if ($reportTarget === 'student') {
+        $subjectLabel = "student ID {$targetStudentId}";
+    } elseif ($reportTarget === 'teacher') {
+        $subjectLabel = "teacher ID {$targetTeacherId}";
+    } else {
+        $subjectLabel = "other: {$otherName}";
+    }
+
+    $violationLabel = $violationId ? "violation ID {$violationId}" : $customViolation;
+
+    // ── Persist to DB ────────────────────────────────────
     $data = [
         'reporter_id'         => $userId,
         'report_target'       => $reportTarget,
@@ -112,12 +157,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $reportId = $reportModel->submitStudentReport($data);
 
+    // ── Audit ────────────────────────────────────────────
     if ($reportId) {
+        auditStudentAction(
+            $pdo,
+            'SUBMIT_REPORT',
+            "Student {$studentName} (ID {$userId}) submitted report ID {$reportId} against {$subjectLabel}. "
+                . "Violation: {$violationLabel}. Location: {$location}."
+                . ($evidencePath ? " Evidence attached ({$evidenceType})." : '')
+        );
+
         $_SESSION['flash'] = [
             'type'    => 'success',
             'message' => 'Your report has been submitted successfully. It is now under review.',
         ];
     } else {
+        auditStudentAction(
+            $pdo,
+            'SUBMIT_REPORT_FAILED',
+            "Student {$studentName} (ID {$userId}) — DB insert failed when reporting {$subjectLabel}. "
+                . "Violation: {$violationLabel}."
+        );
+
         $_SESSION['flash'] = [
             'type'     => 'error',
             'messages' => ['Failed to submit report. Please try again.'],

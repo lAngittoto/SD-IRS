@@ -7,7 +7,7 @@ if ($page === '') {
 
 // ✅ UPDATED - Added 'change-credentials-otp' sa authPages
 $authPages = ['home-page', 'log-in', 'authenticate', 'change-credentials-otp', 'forgot-password'];
-$admin = ['admin-dashboard', 'incident-reports', 'discipline-records', 'advisories', 'user-management','reports'];
+$admin = ['admin-dashboard', 'incident-reports', 'discipline-records', 'advisories', 'user-management','reports', 'audit-log', 'backuprestore'];
 $teacher = ['teacher-dashboard', 'reports-incident', 'my-advisories','change-credentials'];
 $student = ['student-dashboard', 'code-of-conduct', 'student-report'];
 

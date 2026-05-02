@@ -1,6 +1,5 @@
 <?php 
 $page = $_GET['page'] ?? 'admin';
-
 switch ($page) {
     case 'admin-dashboard':
         include __DIR__.'/../app/admin/controllers/dashboard-controller.php';
@@ -20,8 +19,14 @@ switch ($page) {
     case 'reports':
         include __DIR__.'/../app/admin/controllers/reports-controller.php';
         break;
+    case 'audit-log':
+        include __DIR__.'/../app/admin/controllers/audit-log-controller.php';
+        break;
+    case 'backuprestore':
+        include __DIR__.'/../app/admin/controllers/backup-restore-controller.php';
+        break;
     default:
-    http_response_code(404);
-    echo "404 Page not found.";
-    break;
+        http_response_code(404);
+        echo "404 Page not found.";
+        break;
 }

@@ -4,6 +4,34 @@ $violations  = $incidentController->getViolationFilters();
 ob_start();
 ?>
 
+<style>
+@media print {
+    /* Hide everything except the print area */
+    body > *,
+    main > * { display: none !important; }
+
+    #printArea {
+        display: block !important;
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 9999 !important;
+        background: white !important;
+        padding: 32px !important;
+        font-family: sans-serif !important;
+    }
+
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    @page {
+        size: portrait;
+        margin: 1.5cm;
+    }
+}
+</style>
+
+<!-- Hidden Print Area (populated dynamically) -->
+<div id="printArea" style="display:none;"></div>
+
 <main class="transition-all duration-300 xl:ml-64 min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 p-5 md:p-8 w-full xl:w-[calc(100%-16rem)] overflow-x-hidden">
 
     <?php include __DIR__.'/../../../includes/admin-sidebar.php'; ?>
@@ -189,10 +217,19 @@ ob_start();
                     <p class="text-[#f8c922]/70 text-xs mt-0.5" id="modalReportId">—</p>
                 </div>
             </div>
-            <button onclick="closeDetailModal()"
-                    class="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
-                <i class="fa-solid fa-xmark text-base"></i>
-            </button>
+            <!-- Header buttons -->
+            <div class="flex items-center gap-2">
+                <!-- ✅ PRINT BUTTON SA MODAL -->
+                <button id="modalPrintBtn" onclick="printReport()" title="Print this report"
+                        class="w-10 h-10 flex items-center justify-center rounded-full bg-[#f8c922]/20 hover:bg-[#f8c922]/40 text-[#f8c922] transition-all"
+                        style="opacity:0.4;" disabled>
+                    <i class="fa-solid fa-print text-sm"></i>
+                </button>
+                <button onclick="closeDetailModal()"
+                        class="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
         </div>
 
         <!-- Scrollable body -->
@@ -281,6 +318,7 @@ ob_start();
     let deleteTargetId    = null;
     let pendingStatusData = null;
     let toastTimer        = null;
+    let currentReportData = null; // stores the loaded report for printing
 
     /* ─────────── Toast ─────────── */
     function showToast(msg, success) {
@@ -292,6 +330,127 @@ ob_start();
         el.classList.remove('hidden');
         toastTimer = setTimeout(() => el.classList.add('hidden'), 3500);
     }
+
+    /* ─────────── PRINT REPORT ─────────── */
+    window.printReport = function () {
+        if (!currentReportData) return;
+        const d = currentReportData;
+
+        const statusColors = {
+            pending:   '#D97706',
+            reviewed:  '#2563EB',
+            resolved:  '#16A34A',
+            dismissed: '#6B7280',
+        };
+        const statusColor = statusColors[d.status] || '#6B7280';
+
+        const roleLabel = {
+            student: 'Student',
+            teacher: 'Faculty / Teacher',
+            other:   'Other',
+        }[d.report_target] || d.report_target;
+
+        const fmtDate = (str) => {
+            if (!str) return '—';
+            return new Date(str).toLocaleDateString('en-US', {
+                month: 'long', day: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        };
+
+        const escP = (str) => {
+            if (!str) return '—';
+            const el = document.createElement('div');
+            el.appendChild(document.createTextNode(str));
+            return el.innerHTML;
+        };
+
+        document.getElementById('printArea').innerHTML = `
+            <div style="font-family:sans-serif;max-width:680px;margin:0 auto;color:#111;">
+
+                <!-- Report Header -->
+                <div style="background:#043915;color:white;padding:24px 32px;border-radius:12px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;">
+                    <div>
+                        <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px;">Incident Report</div>
+                        <div style="font-size:13px;color:#f8c922;margin-top:4px;">Report #${d.report_id} &bull; SY ${escP(d.school_year)}</div>
+                    </div>
+                    <div style="text-align:right;font-size:12px;color:#ccc;">
+                        <div>Printed: ${new Date().toLocaleDateString('en-US',{month:'long',day:'2-digit',year:'numeric'})}</div>
+                        <div style="margin-top:6px;display:inline-block;background:${statusColor};color:white;padding:3px 12px;border-radius:6px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">${d.status}</div>
+                    </div>
+                </div>
+
+                <!-- Reported Individual -->
+                <div style="background:#f8f8f8;border:1px solid #e5e7eb;border-radius:10px;padding:16px 20px;margin-bottom:16px;">
+                    <div style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Reported Individual</div>
+                    <div style="font-size:18px;font-weight:800;color:#111;">${escP(d.reported_name)}</div>
+                    <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                        <span style="background:#EFF6FF;color:#1D4ED8;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;">${roleLabel}</span>
+                        ${d.grade_level ? `<span style="font-size:11px;color:#6B7280;">Grade ${d.grade_level}</span>` : ''}
+                        ${d.student_lrn ? `<span style="font-size:11px;color:#6B7280;">LRN: ${escP(d.student_lrn)}</span>` : ''}
+                    </div>
+                    ${d.advisory_name ? `
+                    <div style="margin-top:10px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;">
+                        <span style="font-weight:700;color:#15803D;">Advisory Class:</span>
+                        <span style="color:#166534;margin-left:6px;">${escP(d.advisory_name)}</span>
+                        ${d.advisory_teacher_name ? `<span style="color:#6B7280;margin-left:4px;">— ${escP(d.advisory_teacher_name)}</span>` : ''}
+                    </div>` : ''}
+                </div>
+
+                <!-- Info Grid -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                    <div style="background:#f8f8f8;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;">
+                        <div style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Reported By</div>
+                        <div style="font-size:14px;font-weight:600;color:#111;">${escP(d.reporter_name)}</div>
+                    </div>
+                    <div style="background:#f8f8f8;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;">
+                        <div style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Location</div>
+                        <div style="font-size:14px;font-weight:600;color:#111;">${escP(d.location)}</div>
+                    </div>
+                    <div style="background:#f8f8f8;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;">
+                        <div style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Violation</div>
+                        <div style="font-size:14px;font-weight:600;color:#111;">${escP(d.violation_display)}</div>
+                    </div>
+                    <div style="background:#f8f8f8;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;">
+                        <div style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Date Filed</div>
+                        <div style="font-size:14px;font-weight:600;color:#111;">${fmtDate(d.created_at)}</div>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px 20px;margin-bottom:16px;">
+                    <div style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Incident Description</div>
+                    <div style="font-size:13px;color:#374151;line-height:1.75;white-space:pre-wrap;">${escP(d.description)}</div>
+                </div>
+
+                <!-- Admin Notes -->
+                ${d.admin_notes ? `
+                <div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:10px;padding:16px 20px;margin-bottom:16px;">
+                    <div style="font-size:10px;font-weight:700;color:#B45309;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Admin Notes</div>
+                    <div style="font-size:13px;color:#92400E;line-height:1.65;">${escP(d.admin_notes)}</div>
+                </div>` : ''}
+
+                <!-- Reviewed By -->
+                ${d.reviewed_by_name ? `
+                <div style="font-size:12px;color:#6B7280;margin-bottom:16px;">
+                    <span style="font-weight:700;">Reviewed by:</span> ${escP(d.reviewed_by_name)} &bull; ${fmtDate(d.reviewed_at)}
+                </div>` : ''}
+
+                <!-- Signature Lines -->
+                <div style="margin-top:56px;display:grid;grid-template-columns:1fr 1fr;gap:48px;">
+                    <div>
+                        <div style="border-top:1.5px solid #111;padding-top:6px;font-size:11px;color:#6B7280;text-align:center;">Reported By / Signature over Printed Name</div>
+                    </div>
+                    <div>
+                        <div style="border-top:1.5px solid #111;padding-top:6px;font-size:11px;color:#6B7280;text-align:center;">Noted By / Admin Signature over Printed Name</div>
+                    </div>
+                </div>
+
+            </div>
+        `;
+
+        window.print();
+    };
 
     /* ─────────── FILTERS ─────────── */
     function applyFilters() {
@@ -348,7 +507,14 @@ ob_start();
     const modalPanel = document.getElementById('modalPanel');
 
     window.openDetailModal = function (reportId) {
-        currentReportId = reportId;
+        currentReportId   = reportId;
+        currentReportData = null;
+
+        // disable print btn while loading
+        const printBtn = document.getElementById('modalPrintBtn');
+        printBtn.style.opacity = '0.4';
+        printBtn.disabled = true;
+
         document.getElementById('modalReportId').textContent = '#' + reportId;
         document.getElementById('modalLoading').classList.remove('hidden');
         document.getElementById('modalContent').classList.add('hidden');
@@ -369,6 +535,10 @@ ob_start();
         .then(res => {
             document.getElementById('modalLoading').classList.add('hidden');
             if (res.success) {
+                currentReportData = res.data;
+                // enable print btn once data is loaded
+                printBtn.style.opacity = '1';
+                printBtn.disabled = false;
                 renderModalContent(res.data);
                 renderStatusButtons(res.data.status);
             } else {
