@@ -12,7 +12,7 @@ ob_start();
         
         <div class="text-center mb-8">
             <div class="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <i class="fa-solid fa-shield-halved text-[#043915] text-3xl"></i>
+               <img src="/student-discipline-and-incident-reporting-system/public/assets/images/mangaldanlogo.jpg" alt="Logo" class="w-[50px] md:w-[70px]">
             </div>
             <h2 class="text-2xl font-bold text-[#043915]">Welcome Back!</h2>
             <p class="text-sm text-gray-500 mt-2">Enter your credentials to access your account.</p>
